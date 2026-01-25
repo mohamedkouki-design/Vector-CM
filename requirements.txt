@@ -1,0 +1,13 @@
+pdf2image
+python-docx
+qdrant-client 
+sentence-transformers 
+pandas 
+numpy 
+streamlit 
+plotly 
+scikit-learn 
+pillow 
+pytesseract 
+opencv-python
+Faker

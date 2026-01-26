@@ -333,11 +333,20 @@ elif dashboard == "👤 Client Portal":
                 st.error("Unable to find similar cases. Please check your Qdrant connection.")
                 st.stop()
             
-            # STEP 3: Analyze outcomes
+            # STEP 3: Analyze outcomes (weighted by similarity score)
+            # COSINE distance: higher score = more similar
+            # Weight each outcome by how similar that case is (more similar = more important)
+            weighted_success = sum(s.score * s.payload['outcome'] for s in similar)
+            total_weight = sum(s.score for s in similar)
+            approval_likelihood = weighted_success / total_weight if total_weight > 0 else 0
+            
+            # For transparency: also show unweighted counts
             outcomes = [s.payload['outcome'] for s in similar]
             good_payers = sum(outcomes)
             defaulters = len(outcomes) - good_payers
-            approval_likelihood = good_payers / len(outcomes)
+            
+            # Debug info
+            st.write(f"Debug: Weighted approval = {approval_likelihood:.2f}, Unweighted = {good_payers/len(outcomes):.2f}")
             
             # STEP 4: Show results based on likelihood
             st.markdown("---")
@@ -411,7 +420,7 @@ elif dashboard == "👤 Client Portal":
                 st.markdown("---")
                 st.markdown("## 🌟 Your Success Twin - Path to Approval")
                 
-                success_twin = find_success_twin(memory, new_client, min_similarity=0.5)
+                success_twin = find_success_twin(memory, new_client, min_similarity=0.75)
                 
                 if success_twin:
                     st.success(f"✨ We found a client who started **{success_twin.score:.0%} similar** to you and successfully repaid!")

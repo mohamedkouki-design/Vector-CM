@@ -28,73 +28,31 @@ class CreditEmbedder:
         except (KeyError, TypeError, ValueError):
             return default
     
-    def create_client_vector(self, client_row):       
-        """Convert client data to vector with full data structure"""
-        # Core financial features (8D)
-        features = [
-            self._safe_get(client_row, 'income') / 5000,
-            self._safe_get(client_row, 'expenses') / 5000,
-            self._safe_get(client_row, 'debt') / 10000,
-            self._safe_get(client_row, 'age') / 100,
-            self._safe_get(client_row, 'seniority_months') / 120,
-            self._safe_get(client_row, 'payment_consistency', 0.5),
-            self._safe_get(client_row, 'loan_amount') / 10000,
-            self._normalize_employment_type(client_row.get('employment_type') if isinstance(client_row, dict) else client_row['employment_type']),
-        ]
-        
-        # Extended features from informal economy (4D)
-        extended_features = [
-            self._safe_get(client_row, 'mobile_payment_ratio', 0.5),
-            self._safe_get(client_row, 'ledger_quality_score', 0.5),
-            self._safe_get(client_row, 'risk_score', 0.5),
-            1.0 if self._safe_get(client_row, 'is_fraud', 0) == 0 else 0.0,  # Non-fraud indicator
-        ]
-        
-        # Create rich text description for semantic embedding
-        description = f"""
-        Income: {self._safe_get(client_row, 'income'):.0f}, 
-        Expenses: {self._safe_get(client_row, 'expenses'):.0f},
-        Debt: {self._safe_get(client_row, 'debt'):.0f}, 
-        Business seniority: {self._safe_get(client_row, 'seniority_months'):.0f} months,
-        Payment consistency: {self._safe_get(client_row, 'payment_consistency', 0.5):.2f},
-        Mobile payment usage: {self._safe_get(client_row, 'mobile_payment_ratio', 0.5):.2f},
-        Ledger quality: {self._safe_get(client_row, 'ledger_quality_score', 0.5):.2f},
-        Age: {self._safe_get(client_row, 'age'):.0f},
-        Loan request: {self._safe_get(client_row, 'loan_amount'):.0f},
-        Employment: {client_row.get('employment_type', 'informal') if isinstance(client_row, dict) else client_row.get('employment_type', 'informal')}
-        """
-        
-        # Get text embedding
-        text_embedding = self.text_model.encode(description)
-        
-        # Combine all features (late fusion)
-        numerical_vector = np.array(features + extended_features)
-        
-        # Weighted combination of numerical and text features
-        combined = np.concatenate([
-            numerical_vector * 10,  # Weight numerical features
-            text_embedding
-        ])
-        
-        return combined.tolist()
+    def _normalize_value(self, value, min_val, max_val):
+        """Normalize value to [0, 1] range using min-max scaling"""
+        if max_val == min_val:
+            return 0.5
+        return (value - min_val) / (max_val - min_val)
     
     def create_simple_vector(self, client_row):
-        """Extended vector with full data structure (12 dimensions)"""
+        """Extended vector with full data structure (12 dimensions)
+        Uses realistic financial bounds for MENA informal economy
+        """
         features = [
-            # Core financial (8D)
-            self._safe_get(client_row, 'income') / 5000,
-            self._safe_get(client_row, 'expenses') / 5000,
-            self._safe_get(client_row, 'debt') / 10000,
-            self._safe_get(client_row, 'age') / 100,
-            self._safe_get(client_row, 'seniority_months') / 120,
-            self._safe_get(client_row, 'payment_consistency', 0.5),
-            self._safe_get(client_row, 'loan_amount') / 10000,
+            # Core financial (8D) - normalized to realistic ranges
+            min(1.0, max(0.0, self._safe_get(client_row, 'income') / 5000)),  # 0-5000 maps to 0-1
+            min(1.0, max(0.0, self._safe_get(client_row, 'expenses') / 5000)),
+            min(1.0, max(0.0, self._safe_get(client_row, 'debt') / 10000)),  # 0-10000 maps to 0-1
+            self._safe_get(client_row, 'age') / 100,  # 0-100 age
+            min(1.0, self._safe_get(client_row, 'seniority_months') / 120),  # 0-120 months = 0-1
+            min(1.0, max(0.0, self._safe_get(client_row, 'payment_consistency', 0.5))),  # Already 0-1
+            min(1.0, max(0.0, self._safe_get(client_row, 'loan_amount') / 15000)),  # 0-15000 maps to 0-1
             self._normalize_employment_type(client_row.get('employment_type') if isinstance(client_row, dict) else client_row['employment_type']),
             # Extended informal economy (4D)
-            self._safe_get(client_row, 'mobile_payment_ratio', 0.5),
-            self._safe_get(client_row, 'ledger_quality_score', 0.5),
-            self._safe_get(client_row, 'risk_score', 0.5),
-            1.0 if self._safe_get(client_row, 'is_fraud', 0) == 0 else 0.0,  # Non-fraud indicator
+            min(1.0, max(0.0, self._safe_get(client_row, 'mobile_payment_ratio', 0.5))),
+            min(1.0, max(0.0, self._safe_get(client_row, 'ledger_quality_score', 0.5))),
+            min(1.0, max(0.0, self._safe_get(client_row, 'risk_score', 0.5))),
+            float(self._safe_get(client_row, 'is_fraud', 0)),  # Fraud indicator (1.0 = fraud, 0.0 = legitimate)
         ]
         return features
 

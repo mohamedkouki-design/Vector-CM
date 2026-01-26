@@ -161,8 +161,10 @@ class CreditMemory:
         
         return enriched_results
     
-    def check_fraud(self, client_data, threshold=0.85):
-        """Check against fraud patterns using new risk-based scoring"""
+    def check_fraud(self, client_data, threshold=0.75):
+        """Check against fraud patterns using vector similarity (COSINE).
+        Higher score = more similar. Threshold of 0.75+ = likely fraudulent.
+        """
         query_vector = self.embedder.create_simple_vector(client_data)
         
         results = self.client.query_points(

@@ -297,7 +297,13 @@ elif dashboard == "👤 Client Portal":
             })
             
             # STEP 1: Check fraud first
-            is_fraud, fraud_score = memory.check_fraud(new_client)
+            fraud_result = memory.check_fraud(new_client)
+
+            # Then access the values you need:
+            is_fraud = fraud_result['is_fraud']
+            fraud_score = fraud_result['fraud_score']
+            similar_fraud = fraud_result['similar_fraud']
+            fraud_narrative = fraud_result['fraud_narrative']
             
             if is_fraud:
                 st.markdown("---")
@@ -704,3 +710,4 @@ elif dashboard == "⚙️ Admin Command Center":
         
         except FileNotFoundError:
             st.error("Data files not found.")
+

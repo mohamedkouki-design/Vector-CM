@@ -1,85 +1,100 @@
-# Vector generation 
 import numpy as np
-import pandas as pd
 from sentence_transformers import SentenceTransformer
+import logging
 
-class CreditEmbedder:
-    def __init__(self):
-        # For text descriptions (if needed later)
-        self.text_model = SentenceTransformer('all-MiniLM-L6-v2')
-    
-    def _normalize_employment_type(self, employment_type):
-        """Handle different employment type formats"""
-        if pd.isna(employment_type):
-            return 0
-        emp_str = str(employment_type).lower()
-        if 'formal' in emp_str:
-            return 1.0
-        elif 'mixed' in emp_str:
-            return 0.5
-        else:  # informal
-            return 0.0
-    
-    def _safe_get(self, data, key, default=0.0):
-        """Safely get value from dict/Series with default"""
-        try:
-            val = data.get(key) if isinstance(data, dict) else data[key]
-            return float(val) if val is not None else default
-        except (KeyError, TypeError, ValueError):
-            return default
-    
-    def _normalize_value(self, value, min_val, max_val):
-        """Normalize value to [0, 1] range using min-max scaling"""
-        if max_val == min_val:
-            return 0.5
-        return (value - min_val) / (max_val - min_val)
-    
-    def create_simple_vector(self, client_row):
-        """Extended vector with full data structure (12 dimensions)
-        Uses realistic financial bounds for MENA informal economy
-        """
-        features = [
-            # Core financial (8D) - normalized to realistic ranges
-            min(1.0, max(0.0, self._safe_get(client_row, 'income') / 5000)),  # 0-5000 maps to 0-1
-            min(1.0, max(0.0, self._safe_get(client_row, 'expenses') / 5000)),
-            min(1.0, max(0.0, self._safe_get(client_row, 'debt') / 10000)),  # 0-10000 maps to 0-1
-            self._safe_get(client_row, 'age') / 100,  # 0-100 age
-            min(1.0, self._safe_get(client_row, 'seniority_months') / 120),  # 0-120 months = 0-1
-            min(1.0, max(0.0, self._safe_get(client_row, 'payment_consistency', 0.5))),  # Already 0-1
-            min(1.0, max(0.0, self._safe_get(client_row, 'loan_amount') / 15000)),  # 0-15000 maps to 0-1
-            self._normalize_employment_type(client_row.get('employment_type') if isinstance(client_row, dict) else client_row['employment_type']),
-            # Extended informal economy (4D)
-            min(1.0, max(0.0, self._safe_get(client_row, 'mobile_payment_ratio', 0.5))),
-            min(1.0, max(0.0, self._safe_get(client_row, 'ledger_quality_score', 0.5))),
-            min(1.0, max(0.0, self._safe_get(client_row, 'risk_score', 0.5))),
-            float(self._safe_get(client_row, 'is_fraud', 0)),  # Fraud indicator (1.0 = fraud, 0.0 = legitimate)
-        ]
-        return features
+logger = logging.getLogger(__name__)
 
-# Test
-if __name__ == "__main__":
-    import pandas as pd
-    from demo_data import VectorCMDataGenerator
-    
-    # Generate test data using demo_data
-    generator = VectorCMDataGenerator()
-    test_clients = [generator.generate_client_profile(i) for i in range(5)]
-    
-    embedder = CreditEmbedder()
-    
-    # Test simple version (faster for demo)
-    test_vector = embedder.create_simple_vector(test_clients[0])
-    print(f"✅ Simple Vector Dimension: {len(test_vector)} features")
-    print(f"   Sample vector: {test_vector[:4]}")
-    
-    # Test full vector with text embedding
-    full_vector = embedder.create_client_vector(test_clients[0])
-    print(f"\n✅ Full Vector Dimension: {len(full_vector)} (12D numerical + text embedding)")
-    
-    # Display data structure used
-    print(f"\n📊 Sample Client Data Structure:")
-    client = test_clients[0]
-    for key, value in client.items():
-        if key != 'risk_narrative':  # Skip long narrative for display
-            print(f"   {key}: {value}")
+# Singleton model
+_encoder = None
 
+def get_encoder():
+    """Get or create encoder (singleton)"""
+    global _encoder
+    if _encoder is None:
+        logger.info("Loading sentence transformer model...")
+        _encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        logger.info("Model loaded successfully")
+    return _encoder
+
+def create_embedding(client_data):
+    """
+    Create 384-dim embedding from client data
+    
+    Args:
+        client_data: dict or Series with keys:
+            - archetype
+            - debt_ratio
+            - years_active
+            - income_stability
+            - payment_regularity
+            - monthly_income (optional)
+    
+    Returns:
+        numpy array of shape (384,) - L2 normalized
+    """
+    encoder = get_encoder()
+    
+    # Extract features with defaults
+    archetype = str(client_data.get('archetype', 'unknown'))
+    debt_ratio = float(client_data.get('debt_ratio', 0.5))
+    years_active = float(client_data.get('years_active', 5))
+    income_stability = float(client_data.get('income_stability', 0.7))
+    payment_regularity = float(client_data.get('payment_regularity', 0.8))
+    monthly_income = float(client_data.get('monthly_income', 1500))
+    
+    # Part 1: Text embedding (128 dims)
+    text = f"{archetype} business"
+    text_emb = encoder.encode(text)
+    text_features = text_emb[:128]
+    
+    # Part 2: Financial features (128 dims)
+    financial = np.array([
+        debt_ratio,
+        years_active / 20,  # Normalize to [0,1]
+        income_stability,
+        monthly_income / 5000,  # Normalize
+        payment_regularity
+    ])
+    financial_padded = np.pad(financial, (0, 128 - len(financial)))
+    
+    # Part 3: Behavioral features (128 dims)
+    behavioral = np.zeros(128)
+    behavioral[0] = calculate_risk_score(client_data)
+    behavioral[1] = income_stability * payment_regularity  # Combined metric
+    
+    # Combine all parts
+    full_vector = np.concatenate([
+        text_features,
+        financial_padded,
+        behavioral
+    ])
+    
+    # CRITICAL: L2 normalize
+    norm = np.linalg.norm(full_vector)
+    if norm > 0:
+        normalized = full_vector / norm
+    else:
+        normalized = full_vector
+    
+    logger.debug(f"Created embedding with norm: {np.linalg.norm(normalized):.4f}")
+    
+    return normalized
+
+def calculate_risk_score(client_data):
+    """Calculate simple risk score [0,1]"""
+    debt_ratio = float(client_data.get('debt_ratio', 0.5))
+    income_stability = float(client_data.get('income_stability', 0.7))
+    payment_regularity = float(client_data.get('payment_regularity', 0.8))
+    
+    risk = (
+        debt_ratio * 0.4 +
+        (1 - income_stability) * 0.3 +
+        (1 - payment_regularity) * 0.3
+    )
+    
+    return min(1.0, max(0.0, risk))
+
+# Backward compatibility
+def create_client_embedding(client_data):
+    """Alias for create_embedding"""
+    return create_embedding(client_data)

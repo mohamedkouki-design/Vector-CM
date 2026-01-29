@@ -3,7 +3,7 @@ import os
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 import pandas as pd
-from embeddings import CreditEmbedder
+from embeddings_old import CreditEmbedder
 
 class CreditMemory:
     def __init__(self, host="localhost", port=6333):

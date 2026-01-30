@@ -19,6 +19,10 @@ export default function ClientPortal() {
   const [documents, setDocuments] = useState([]);
   const [applicationResult, setApplicationResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [inputMode, setInputMode] = useState('manual'); // 'manual', 'voice', or 'status'
+  const [statusCheckId, setStatusCheckId] = useState('');
+  const [statusResult, setStatusResult] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
   
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -80,7 +84,21 @@ export default function ClientPortal() {
       setLoading(false);
     }
   };
-  const [useVoiceInput, setUseVoiceInput] = useState(false);
+  const checkApplicationStatus = async () => {
+    if (!statusCheckId.trim()) return;
+    setStatusLoading(true);
+    try {
+      const res = await axios.get(`http://localhost:8000/api/v1/applications/status/${statusCheckId}`);
+      setStatusResult(res.data);
+    } catch (error) {
+      console.error('Failed to check status:', error);
+      setStatusResult({
+        error: error.response?.data?.detail || 'Application not found'
+      });
+    } finally {
+      setStatusLoading(false);
+    }
+  };
   
   return (
     <ErrorBoundary>
@@ -125,30 +143,135 @@ export default function ClientPortal() {
             </div>
           ))}
         </div>
-        {/* Voice/Manual Toggle */}
-        <div className="flex justify-center mb-8">
+        {/* Application Mode Toggle */}
+        <div className="flex justify-center mb-8 flex-wrap gap-3">
           <div className="inline-flex bg-slate-800 border border-slate-700 rounded-lg p-1">
             <button
-              onClick={() => setUseVoiceInput(false)}
+              onClick={() => { setInputMode('manual'); setStatusResult(null); }}
               className={`px-6 py-3 rounded-md font-semibold transition-all ${
-                !useVoiceInput ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
+                inputMode === 'manual' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               📝 Manual Entry
             </button>
             <button
-              onClick={() => setUseVoiceInput(true)}
+              onClick={() => { setInputMode('voice'); setStatusResult(null); }}
               className={`px-6 py-3 rounded-md font-semibold transition-all ${
-                useVoiceInput ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
+                inputMode === 'voice' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               🎤 Voice Input
             </button>
+            <button
+              onClick={() => { setInputMode('status'); setStatusResult(null); }}
+              className={`px-6 py-3 rounded-md font-semibold transition-all ${
+                inputMode === 'status' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              📋 Check Status
+            </button>
           </div>
         </div>
 
+        {/* Check Status Mode */}
+        {inputMode === 'status' && (
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 animate-slide-up">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-white">Check Application Status</h2>
+              <p className="text-slate-400 mt-2">Enter your Client ID to view your application status and decision</p>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-white mb-3">
+                  Client ID
+                </label>
+                <input
+                  type="text"
+                  value={statusCheckId}
+                  onChange={(e) => setStatusCheckId(e.target.value)}
+                  placeholder="e.g., CLIENT_001 or UUID"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 transition-all"
+                  onKeyPress={(e) => e.key === 'Enter' && checkApplicationStatus()}
+                />
+              </div>
+              
+              <button
+                onClick={checkApplicationStatus}
+                disabled={statusLoading || !statusCheckId.trim()}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all"
+              >
+                {statusLoading ? 'Checking...' : 'Check Status'}
+              </button>
+            </div>
+            
+            {/* Status Result */}
+            {statusResult && (
+              <div className="mt-8 animate-slide-up">
+                {statusResult.error ? (
+                  <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-6">
+                    <p className="text-red-300 font-semibold mb-2">❌ Not Found</p>
+                    <p className="text-red-200 text-sm">{statusResult.error}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-6">
+                      <div className="mb-6">
+                        <p className="text-slate-400 text-sm mb-1">Client ID</p>
+                        <p className="text-white font-semibold text-lg">{statusResult.client_id}</p>
+                      </div>
+                      
+                      <div className="mb-6">
+                        <p className="text-slate-400 text-sm mb-1">Status</p>
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                            statusResult.status === 'approved' ? 'bg-green-500/20 text-green-300' :
+                            statusResult.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                            'bg-red-500/20 text-red-300'
+                          }`}>
+                            {statusResult.status === 'approved' ? '✓' : 
+                             statusResult.status === 'pending' ? '⏳' : '✗'}
+                          </span>
+                          <span className={`text-xl font-bold ${
+                            statusResult.status === 'approved' ? 'text-green-400' :
+                            statusResult.status === 'pending' ? 'text-yellow-400' :
+                            'text-red-400'
+                          }`}>
+                            {statusResult.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {statusResult.status === 'approved' && (
+                        <div className="bg-green-500/10 border border-green-400/30 rounded-lg p-4">
+                          <p className="text-green-300 font-semibold mb-2">✓ Congratulations!</p>
+                          <p className="text-green-200 text-sm">Your application has been approved. You can now proceed with the next steps.</p>
+                        </div>
+                      )}
+                      
+                      {statusResult.status === 'rejected' && statusResult.rejection_reason && (
+                        <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4 mt-4">
+                          <p className="text-red-300 font-semibold mb-2">❌ Application Rejected</p>
+                          <p className="text-red-200 text-sm whitespace-pre-wrap">{statusResult.rejection_reason}</p>
+                        </div>
+                      )}
+                      
+                      {statusResult.status === 'pending' && (
+                        <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4 mt-4">
+                          <p className="text-yellow-300 font-semibold mb-2">⏳ Under Review</p>
+                          <p className="text-yellow-200 text-sm">Your application is being reviewed by our team. Please check back later for updates.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         {/* Voice Mode */}
-        {useVoiceInput && step === 1 && (
+        {inputMode === 'voice' && step === 1 && (
           <VoiceAssistedForm 
             onSubmit={(data) => {
               setFormData({
@@ -164,7 +287,7 @@ export default function ClientPortal() {
         )}
         
         {/* Step 1: Basic Info */}
-        {step === 1 && (
+        {inputMode !== 'status' && step === 1 && (
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 animate-slide-up">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-white">Step 1: Basic Information</h2>

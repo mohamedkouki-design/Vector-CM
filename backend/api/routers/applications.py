@@ -31,6 +31,15 @@ DOCUMENT_COLLECTION_NAME = "document_risk_engine"
 FRAUD_THRESHOLD = 0.96 
 SUSPICION_THRESHOLD = 0.85
 
+# Default locations used when creating credit history points
+# Populate with representative region names (including Tunisian cities)
+LOCATIONS = [
+    "Tunis", "Ariana", "Manouba", "Bizerte", "Nabeul",
+    "Sousse", "Monastir", "Mahdia", "Sfax", "Gabes", "Gafsa",
+    "Kairouan", "Kasserine", "Kebili", "Tozeur",
+    "Tataouine", "Zaghouan", "Beja", "Jendouba",
+]
+
 # Load CLIP model for document analysis
 try:
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")

@@ -1,284 +1,489 @@
-# 🧠 VectorCM
+# 🧠 Vector Credit Memory (Vector CM)
+
+**Self-Evolving Multimodal Credit Intelligence for MENA Informal Economy**
 
 ## Team Members
+- **Mohamed Kouki** | **Ayoub Boudhrioua** | **Oussema Chihi** | **Aziz Ben Daali**
 
-**Project Team:**
-- **Mohamed Kouki** 
-- **Ayoub Boudhrioua**
-- **Oussema Chihi**
-- **Aziz Ben Daali**
+---
 
-## Project Overview
+## 📋 Project Overview & Objectives
 
-**Vector Credit Memory** is a self-evolving multimodal credit intelligence system designed for the MENA informal economy. It leverages vector embeddings and similarity search to assess credit risk, detect fraud, and provide personalized financial guidance to informal sector workers.
+**Vector Credit Memory** is a production-ready credit intelligence system designed specifically for the MENA informal economy. The platform leverages vector embeddings and Qdrant's vector database for fast similarity search to enable real-time credit decisions without traditional credit scores.
 
-The system uses Qdrant vector database for fast similarity matching against historical lending data, enabling real-time credit decisions and fraud pattern detection without traditional credit scores.
+### Key Objectives
+✅ Democratize credit access for unbanked informal sector workers  
+✅ Mitigate fraud through behavioral pattern matching  
+✅ Provide personalized improvement paths for better credit outcomes  
+✅ Enable transparent decisions with explainable AI (financial twins)  
+✅ Process applications in real-time with <100ms latency  
 
-## Key Features
+### Innovation Highlight
+Uses **Qdrant vector database** with semantic embeddings to find "financial twins"—similar clients who successfully repaid loans—providing both approval decisions and actionable improvement recommendations.
 
-- **Vector-Based Credit Assessment**: Similarity search against 2,000+ historical cases to predict repayment likelihood
-- **Fraud Detection**: Behavioral pattern matching to identify suspicious applications without label leakage
-- **Success Twin Algorithm**: Finds similar clients who successfully repaid loans and provides personalized improvement paths
-- **Weighted Approval Logic**: Outcomes weighted by similarity scores for more accurate predictions
-- **Informal Economy Focus**: Specialized handling of mobile payment data, business seniority, ledger quality, and self-employment patterns
-- **Multi-Dashboard Interface**: Overview, Client Portal, and Admin Command Center
-- **What-If Counterfactuals**: Scenario analysis to show clients how to improve their approval chances
+---
 
-## Tech Stack
+## 🌐 Platform Link
 
-### Backend & Data
-- **Python 3.8+** - Core language
-- **Pandas** - Data processing and analysis
-- **NumPy** - Numerical computations
-- **Qdrant Vector Database** - Fast vector similarity search (11D vectors)
-- **Sentence Transformers** - Text embeddings (for semantic analysis)
+**Deployment Status**: Available for Hackathon Judges
+- **Frontend**: React + Vite (http://localhost:5173)
+- **Backend API**: FastAPI (http://localhost:8000)
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
+- **Vector DB**: Qdrant Dashboard (http://localhost:6333/dashboard)
 
-### Frontend
-- **Streamlit** - Interactive web dashboard
-- **Plotly** - Data visualization
-- **Pandas DataFrame Display** - Tabular data rendering
 
-### Core Libraries
-- `qdrant-client` - Vector database client
-- `sentence-transformers` - Text embedding model (all-MiniLM-L6-v2)
-- `faker` - Synthetic data generation for testing
-- `plotly.express` & `plotly.graph_objects` - Advanced charting
+---
 
-### Development Tools
-- Git & GitHub - Version control
-- Environment variables - Configuration management (.env)
+## 🛠️ Technologies Used
 
-## Architecture
+| Category | Technology | Version | Purpose |
+|----------|-----------|---------|---------|
+| **Backend** | Python | 3.8+ | Core language |
+| | FastAPI | Latest | Async web framework |
+| | Uvicorn | Latest | ASGI server |
+| **Vector DB** | Qdrant | 1.x | Vector similarity search |
+| | sentence-transformers | Latest | Text embeddings (all-MiniLM-L6-v2, 384D) |
+| **Data Processing** | Pandas | Latest | Data manipulation |
+| | NumPy | Latest | Numerical operations |
+| | PyTorch | Latest | Deep learning framework |
+| | Transformers | Latest | CLIP model for document analysis |
+| **Frontend** | React | Latest | UI framework |
+| | Vite | Latest | Build tool & dev server |
+| | Tailwind CSS | Latest | Styling framework |
+| | Axios | Latest | HTTP client |
+| | TanStack React Query | Latest | Server state management |
+| | Lucide React | Latest | Icon library |
+| **ML/AI** | Google Generative AI | Latest | Credit oracle insights |
+| **Image Processing** | OpenCV | Latest | Document processing |
+| | Pillow | Latest | Image manipulation |
+| **Infrastructure** | Docker | Latest | Containerization (Qdrant) |
+| | Git/GitHub | - | Version control |
+
+---
+
+## 🏗️ Architecture & Project Hierarchy
+
+### High-Level System Architecture
 
 ```
-app.py (Streamlit UI)
-    ↓
-qdrant_manager.py (Vector database operations)
-    ↓
-embeddings.py (11D vector generation)
-    ↓
-Qdrant Database
-    ├── client_states (historical good/bad outcomes)
-    └── fraud_patterns (known fraud behaviors)
-    
-demo_data.py (Synthetic data generation)
-    ↓
-CSV files (synthetic_clients.csv, synthetic_frauds.csv)
+┌──────────────────────────────────────────────────────────┐
+│  Frontend (React + Vite @ localhost:5173)               │
+│  ├─ Dashboard (Overview & Analytics)                    │
+│  ├─ ClientPortal (Apply for Credit / Check Status)      │
+│  └─ AdminDashboard (Analysis & Vector Space Explorer)   │
+└────────────────────┬─────────────────────────────────────┘
+                     │ HTTP/REST (Axios)
+                     ▼
+┌──────────────────────────────────────────────────────────┐
+│  Backend (FastAPI @ localhost:8000)                     │
+│  ├─ /api/v1/applications/* (Submit, Status, Update)     │
+│  ├─ /api/v1/search/* (Similarity Search)                │
+│  ├─ /api/v1/fraud/* (Fraud Detection)                   │
+│  └─ /api/v1/counterfactual/* (What-If Scenarios)        │
+└────────────────────┬─────────────────────────────────────┘
+                     │ gRPC/TCP
+                     ▼
+┌──────────────────────────────────────────────────────────┐
+│  Qdrant Vector DB (Port 6333)                           │
+│  ├─ credit_history_memory (384D vectors)                │
+│  ├─ fraud_patterns_engine (384D vectors)                │
+│  └─ document_risk_engine (512D CLIP vectors)            │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Setup Instructions
+### Project Directory Structure
 
-### 1. Prerequisites
-- Python 3.8 or higher
-- Qdrant instance (local or cloud)
-- Environment variables configured
-
-### 2. Installation
-
-```bash
-# Clone repository
-git clone https://github.com/mohamedkouki-design/Vector-CM.git
-cd Vector-CM
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Additional packages if needed
-pip install faker sentence-transformers qdrant-client streamlit plotly
+```
+Vector-CM/
+├── backend/                              # FastAPI Backend
+│   ├── main.py                          # FastAPI app entry point
+│   ├── api/routers/
+│   │   ├── applications.py              # Credit application endpoints
+│   │   ├── fraud.py                     # Fraud detection endpoints
+│   │   ├── counterfactual.py            # What-if scenario endpoints
+│   │   ├── search.py                    # Vector similarity search
+│   │   └── ...
+│   ├── services/
+│   │   ├── embeddings.py                # Vector generation (Sentence Transformers)
+│   │   ├── qdrant_manager.py            # Qdrant operations (search, create, update)
+│   │   ├── credit_oracle.py             # LLM-based credit analysis
+│   │   └── utils.py                     # Helper functions
+│   ├── models/schemas.py                # Pydantic data validation
+│   ├── requirements.txt                 # Python dependencies
+│   └── .env                             # Configuration (Qdrant, API keys)
+│
+├── frontend/                             # React + Vite Frontend
+│   ├── src/
+│   │   ├── App.jsx                      # Main router
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx            # Overview dashboard
+│   │   │   ├── ClientPortal.jsx         # Client application portal
+│   │   │   └── AdminDashboard.jsx       # Admin command center
+│   │   ├── components/
+│   │   │   ├── Galaxyview.jsx           # 2D vector space visualization
+│   │   │   ├── CounterfactualEngine.jsx # What-if scenarios UI
+│   │   │   ├── FraudAlert.jsx           # Fraud detection display
+│   │   │   ├── AnimatedBackground.jsx   # Visual effects
+│   │   │   └── ...
+│   │   ├── services/api.js              # Axios API client
+│   │   └── index.css                    # Global styles
+│   ├── package.json                     # NPM dependencies
+│   ├── vite.config.js                   # Vite configuration
+│   ├── tailwind.config.js               # Tailwind CSS config
+│   └── index.html                       # HTML entry point
+│
+├── data/                                 # Data & Scripts
+│   ├── generate_data.py                 # Synthetic data generator
+│   └── synthetic_*.csv                  # Generated datasets
+│
+└── README.md                             # This file
 ```
 
-### 3. Configuration
+---
 
-Create a `.env` file in the project root:
+## 🗄️ Qdrant Integration (Deep Dive)
 
-```bash
-# Qdrant Configuration
-QDRANT_LINK=http://localhost:6333  # Local Qdrant instance or cloud URL
-QDRANT_API_KEY=your_api_key_here   # API key if using Qdrant Cloud
-```
+### Why Qdrant?
 
-### 4. Generate Synthetic Data
+✅ **Sub-millisecond similarity search** on vectors  
+✅ **Payload filtering** for complex queries  
+✅ **Scalable** to millions of vectors  
+✅ **Production-ready** with API security  
+✅ **Managed cloud option** available  
 
-```bash
-python demo_data.py
-```
+### Three Vector Collections
 
-This generates:
-- `synthetic_clients.csv` - 2,000 historical client profiles
-- `synthetic_frauds.csv` - ~100 known fraud patterns
+#### 1️⃣ **credit_history_memory** (384D)
+Stores historical client profiles and outcomes.
 
-### 5. Initialize Vector Database
-
-```bash
-python qdrant_manager.py
-```
-
-This creates Qdrant collections and loads data:
-- `client_states` collection (11D vectors)
-- `fraud_patterns` collection (11D vectors)
-
-### 6. Run the Application
-
-```bash
-streamlit run app.py
-```
-
-The app will open at `http://localhost:8501`
-
-## Running the System
-
-### Quick Start
-```bash
-# One-time setup
-python demo_data.py
-python qdrant_manager.py
-
-# Run application
-streamlit run app.py
-```
-
-### Dashboards Available
-
-1. **🏠 Overview Dashboard**
-   - System statistics (total cases, good payers, defaulters, fraud patterns)
-   - Outcome distribution visualization
-   - Income vs Debt scatter plot
-   - Key performance metrics
-
-2. **👤 Client Portal**
-   - Credit application submission
-   - Demo scenarios (Strong/Borderline/High-Risk/Fraud profiles)
-   - Real-time approval likelihood assessment
-   - Financial twins analysis
-   - Personalized improvement recommendations
-
-3. **⚙️ Admin Command Center**
-   - Vector space explorer (2D projection)
-   - System statistics and distribution analysis
-   - What-If Counterfactual Engine for scenario analysis
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `app.py` | Streamlit main application with all dashboards |
-| `qdrant_manager.py` | Vector database operations and similarity search |
-| `embeddings.py` | 11D vector generation (behavioral features only) |
-| `demo_data.py` | Synthetic data generator for testing |
-| `utils.py` | Helper functions (success twin, improvement path) |
-| `document_checker.py` | Basic document authenticity checking |
-| `requirements.txt` | Python dependencies |
-
-## How It Works
-
-### 1. Vector Generation (11 Dimensions)
-```
-[income, expenses, debt, age, seniority, consistency, loan_amount, 
- employment_type, mobile_payment, ledger_quality, risk_score]
-```
-
-**Key Design**: `is_fraud` is NOT included to avoid false positives on high-consistency clients.
-
-### 2. Similarity Search
-When a new client applies:
-1. Their profile is embedded as an 11D vector
-2. Qdrant finds 20 most similar clients using COSINE distance
-3. Outcomes are weighted by similarity scores
-4. Weighted approval likelihood = Σ(similarity × outcome) / Σ(similarity)
-
-## Vector Dimension Explanation
-
-**11 Dimensions Used:**
-1. **Income** (0-5000 normalized) - Monthly business income
-2. **Expenses** (0-5000 normalized) - Monthly expenses
-3. **Debt** (0-10000 normalized) - Total outstanding debt
-4. **Age** (0-100 normalized) - Client age
-5. **Seniority** (0-120 months normalized) - Business operating period
-6. **Payment Consistency** (0-1) - Historical payment reliability
-7. **Loan Amount** (0-15000 normalized) - Requested credit
-8. **Employment Type** (0-1) - Formal/Mixed/Informal classification
-9. **Mobile Payment Ratio** (0-1) - Digital payment adoption
-10. **Ledger Quality** (0-1) - Record-keeping quality
-11. **Risk Score** (0-1) - Calculated financial health indicator
-
-**Not Included**: `is_fraud` label (to prevent false positives)
-
-## Data Structure
-
-### Client Profile
 ```python
+Collection Schema:
 {
-    'client_id': 'TND-00001',
-    'job_type': 'Market Vendor',
-    'location': 'Tunis',
-    'income': 1200,
-    'expenses': 900,
-    'debt': 1500,
-    'age': 35,
-    'seniority_months': 24,
-    'payment_consistency': 0.75,
-    'loan_amount': 2500,
-    'employment_type': 'informal',
-    'mobile_payment_ratio': 0.5,
-    'ledger_quality_score': 0.6,
-    'outcome': 1,  # 1 = good payer, 0 = defaulter
-    'outcome_label': 'Good Payer',
-    'risk_score': 0.72,
-    'is_fraud': 0,
-    'timestamp': '2025-12-15T...'
+  "client_id": "string",
+  "archetype": "market_vendor|craftsman|etc",
+  "years_active": 0-120,
+  "monthly_income": 0-5000 (TND),
+  "debt_ratio": 0-1,
+  "payment_regularity": 0-1,
+  "income_stability": 0-1,
+  "mobile_payment_ratio": 0-1,
+  "ledger_quality": 0-1,
+  "outcome": "pending|approved|rejected",
+  "rejection_reason": "optional string"
 }
 ```
 
-## Fraud Pattern Detection
+#### 2️⃣ **fraud_patterns_engine** (384D)
+Stores known fraud behavioral patterns.
 
-Fraudsters typically show:
-- **Income**: $5,000-12,000 (unrealistic for informal sector)
-- **Consistency**: 95-100% (too perfect)
-- **Debt**: $0-500 (suspiciously low)
-- **Seniority**: 1-6 months (too young)
-- **Loan Request**: $10,000-20,000 (high for claimed income)
-- **Mobile Payment**: Extremes (0.0 or 0.95+, not natural)
+```python
+Collection Schema:
+{
+  "fraud_type": "identity_fraud|income_falsification|etc",
+  "risk_indicators": [list of flags],
+  "confidence_score": 0-1,
+  "pattern_description": "string"
+}
+```
 
-## Demo Scenarios
+#### 3️⃣ **document_risk_engine** (512D CLIP)
+Stores forged/authentic document patterns using CLIP embeddings.
 
-The system includes 4 pre-configured test profiles:
+```python
+Collection Schema:
+{
+  "document_type": "invoice|receipt|id|etc",
+  "authenticity_score": 0-1,
+  "forgery_indicators": [list of anomalies]
+}
+```
 
-1. **✅ Strong Profile** - Likely approved (92% consistency, established)
-2. **⚠️ Borderline Profile** - Needs improvement (75% consistency, moderate debt)
-3. **❌ High-Risk Profile** - Likely rejected (65% consistency, high debt-to-income)
-4. **🚨 Fraud Attempt** - Should be flagged ($8000 income, perfect consistency, minimal debt)
+### How Similarity Search Works
 
-## Testing
+```python
+# Step 1: Client applies with profile
+client_data = {
+    "archetype": "market_vendor",
+    "debt_ratio": 0.45,
+    "years_active": 15,
+    "income_stability": 0.85,
+    "payment_regularity": 0.88,
+    "monthly_income": 2500
+}
+
+# Step 2: Backend generates embedding (384D)
+embedding = create_embedding(client_data)
+
+# Step 3: Query Qdrant for similar clients
+results = qdrant.search(
+    collection="credit_history_memory",
+    query_vector=embedding,
+    limit=50,
+    score_threshold=0.70
+)
+
+# Step 4: Calculate weighted approval likelihood
+approved_count = sum(1 for r in results if r.outcome == "approved")
+approval_probability = approved_count / len(results)
+
+# Step 5: Return decision with confidence
+{
+    "status": "approved",
+    "confidence": 0.87,
+    "similar_clients": 47,
+    "success_rate": 0.89,
+    "recommendation": "Likely to repay (matched with similar successful clients)"
+}
+```
+
+### Similarity Metric
+- **Distance**: Cosine Distance (0-2 scale, lower = more similar)
+- **Conversion**: similarity = 1 - (distance / 2)
+- **Matching**: Clients with similarity > 0.70 are considered similar
+
+
+
+
+---
+
+## ⚙️ Setup & Installation
+
+### Prerequisites
+- **Python 3.8+** 
+- **Node.js 16+** (for frontend)
+- **Qdrant 1.x** (local or cloud)
+- **Git**
+
+### Installation Steps
+
+#### **Step 1: Clone Repository**
+```bash
+git clone https://github.com/yourusername/Vector-CM.git
+cd Vector-CM
+```
+
+#### **Step 2: Setup Backend**
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate it
+# Windows: venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
+
+# Install dependencies
+pip install -r ../requirements.txt
+
+# Create .env file
+cat > .env << EOF
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+QDRANT_API_KEY=your_api_key_here
+GOOGLE_API_KEY=your_google_api_key
+HOST=0.0.0.0
+PORT=8000
+EOF
+
+cd ..
+```
+
+#### **Step 3: Setup Frontend**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+#### **Step 4: Start Qdrant**
+```bash
+# Using Docker
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
+
+# Verify: curl http://localhost:6333/health
+```
+
+#### **Step 5: Initialize Vector Collections**
+```bash
+cd backend
+python -c "from services.qdrant_manager import QdrantManager; QdrantManager().create_collections()"
+cd ..
+```
+
+#### **Step 6: Start Backend**
+```bash
+cd backend
+python main.py
+# 🚀 Uvicorn running on http://localhost:8000
+```
+
+#### **Step 7: Start Frontend** (new terminal)
+```bash
+cd frontend
+npm run dev
+# ✨ Vite dev server on http://localhost:5173
+```
+
+### Verify Installation
+```bash
+# Health checks
+curl http://localhost:8000/health        # Backend
+curl http://localhost:6333/health        # Qdrant
+curl http://localhost:5173               # Frontend (open in browser)
+```
+
+
+
+---
+
+## 📝 Usage Examples
+
+### Example 1: Submit Credit Application
+
+**Frontend (Client Portal)**
+1. Navigate to http://localhost:5173 → "Apply for Credit"
+2. Select **Manual Entry** mode
+3. Fill business profile:
+   - Business Type: Market Vendor
+   - Years Active: 15
+   - Debt Ratio: 45%
+   - Payment Regularity: 88%
+   - Monthly Income: 2,500 TND
+4. Click "Submit Application"
+
+**Backend Processing**
+```bash
+POST http://localhost:8000/api/v1/applications/submit
+{
+  "client_id": "CLIENT_001",
+  "archetype": "market_vendor",
+  "years_active": 15,
+  "debt_ratio": 0.45,
+  "payment_regularity": 0.88,
+  "monthly_income": 2500
+}
+
+Response (instant):
+{
+  "status": "approved",
+  "confidence": 0.87,
+  "similar_clients": 47,
+  "success_rate": 0.89,
+  "recommendation": "Strong profile matched with successful vendors"
+}
+```
+
+### Example 2: Check Application Status
+
+**Frontend**
+1. Go to Client Portal → "Check Status"
+2. Enter your Client ID: `CLIENT_001`
+3. See result with approval/rejection status
+
+**API Call**
+```bash
+GET http://localhost:8000/api/v1/applications/status/CLIENT_001
+
+Response:
+{
+  "client_id": "CLIENT_001",
+  "status": "approved",
+  "rejection_reason": null
+}
+```
+
+### Example 3: Analyze What-If Scenario
+
+**Frontend (Admin Dashboard)**
+1. Access Admin Command Center
+2. Select "Counterfactual Engine"
+3. Modify parameters: "What if debt ratio drops to 30%?"
+4. See approval likelihood change to 92%
+
+**API Call**
+```bash
+POST http://localhost:8000/api/v1/counterfactual/analyze
+{
+  "base_client": {...},
+  "modifications": {"debt_ratio": 0.30}
+}
+
+Response:
+{
+  "original_approval_rate": 0.87,
+  "modified_approval_rate": 0.92,
+  "impact": "+5% approval likelihood"
+}
+```
+
+### Example 4: View Financial Twins
+
+**Frontend**
+1. Dashboard → Search similar clients
+2. System displays 50 most similar profiles
+3. Color-coded by outcome (green = successful, red = default)
+4. See exact similarity scores
+
+---
+
+## 🧪 Testing
 
 ```bash
-# Test embeddings
-python embeddings.py
+# Test backend API
+curl http://localhost:8000/api/v1/applications/submit -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"archetype":"vendor","debt_ratio":0.45,...}'
 
-# Test vector database
-python qdrant_manager.py
+# Test Qdrant connection
+curl http://localhost:6333/health
 
-# Run Streamlit app
-streamlit run app.py
-
-# Try demo scenarios
-# Select from Client Portal → Choose demo scenario → Submit Application
+# Test frontend (open browser)
+open http://localhost:5173
 ```
 
-## Troubleshooting
 
-### Qdrant Connection Issues
-```python
-# Verify Qdrant is running
-# Local: http://localhost:6333
-# Cloud: Check QDRANT_LINK and QDRANT_API_KEY in .env
+
+---
+
+## 📚 Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `backend/main.py` | FastAPI application entry point |
+| `backend/services/embeddings.py` | Vector generation (Sentence Transformers) |
+| `backend/services/qdrant_manager.py` | Qdrant operations (search, create, update) |
+| `backend/api/routers/applications.py` | Credit application endpoints |
+| `frontend/src/pages/ClientPortal.jsx` | Client application & status check UI |
+| `frontend/src/pages/AdminDashboard.jsx` | Admin analysis interface |
+| `frontend/src/pages/Dashboard.jsx` | Overview statistics dashboard |
+| `requirements.txt` | Python dependencies |
+
+---
+
+## 🐛 Troubleshooting
+
+**Qdrant Connection Refused?**
+```bash
+docker run -p 6333:6333 qdrant/qdrant:latest
 ```
 
-### Missing Dependencies
+**Missing Python Dependencies?**
 ```bash
 pip install -r requirements.txt --upgrade
 ```
 
-### Vector Dimension Mismatch
-- Ensure `embeddings.py` uses 11D
-- Check `qdrant_manager.py` vector_dimension = 11
-- Clear and rebuild collections if changed
+**API Returns 500 Error?**
+```bash
+# Check backend logs for detailed error messages
+# Verify .env file has QDRANT_HOST and GOOGLE_API_KEY set
+```
+
+**Frontend Not Loading?**
+```bash
+# Clear node_modules and reinstall
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```

@@ -165,21 +165,80 @@ Risk change: {risk_change.get('from')} → {risk_change.get('to')}
 Required improvements:
 {', '.join(changes)}
 
-Give 3–4 bullet-point steps.
+Give 3–4 bullet-point steps as a numbered list (1. 2. 3. etc).
 Each step must:
 - Be realistic for informal workers
 - Include a timeline (e.g. 3–6 months)
 - Be concrete and measurable
+- Use *word* format only for words you want emphasized, which will be converted to bold
+Do NOT include arrows, dashes, or Important Notes sections.
+Just provide numbered steps only.
 """
 
         text = self._generate(prompt, temperature=0.6)
 
+        import re
+        
         steps = []
-        for line in text.splitlines():
-            if line.strip().startswith(("-", "•", "*")):
-                steps.append(line[1:].strip())
-
-        return steps if steps else self._fallback_improvement(modifications)
+        # Split by "Step X:" pattern to group all lines for each step
+        step_blocks = re.split(r'(?:^|\n)(?:Step\s+\d+:|Step\s+\d+\s+[-:])', text, flags=re.MULTILINE)
+        
+        for block in step_blocks:
+            if not block.strip():
+                continue
+            
+            # Take the first line or first meaningful content as the step
+            lines = block.strip().split('\n')
+            
+            # Combine multiple lines into a single step description
+            combined_text = ' '.join(line.strip() for line in lines if line.strip())
+            
+            if combined_text:
+                # Remove leading bullet points or asterisks
+                combined_text = re.sub(r'^[\s*\-•]+', '', combined_text)
+                
+                # Clean up extra asterisks and whitespace
+                combined_text = combined_text.replace('**', '*').strip()
+                
+                if combined_text:
+                    steps.append(combined_text)
+        
+        # If we only got a few steps, try alternative parsing
+        if len(steps) < 3:
+            steps = []
+            # Alternative: split by any "What to do:" or similar markers
+            current_step = []
+            for line in text.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Check if this starts a new step section
+                if any(marker in line for marker in ['What to do:', 'Measurable', 'Why it helps:', 'Step']):
+                    if current_step:
+                        combined = ' '.join(current_step)
+                        combined = re.sub(r'^[\s*\-•]+', '', combined)
+                        combined = combined.replace('**', '*').strip()
+                        if combined:
+                            steps.append(combined)
+                        current_step = []
+                
+                if line and not line.startswith('*'):
+                    current_step.append(line)
+            
+            # Add the last step
+            if current_step:
+                combined = ' '.join(current_step)
+                combined = re.sub(r'^[\s*\-•]+', '', combined)
+                combined = combined.replace('**', '*').strip()
+                if combined:
+                    steps.append(combined)
+        
+        # Ensure we have steps, fallback if needed
+        if not steps or (len(steps) == 1 and len(steps[0]) < 20):
+            return self._fallback_improvement(modifications)
+        
+        return steps
 
     # ========= FALLBACKS =========
 

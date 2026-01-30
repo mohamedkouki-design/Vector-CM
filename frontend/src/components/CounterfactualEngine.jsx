@@ -256,13 +256,24 @@ export default function CounterfactualEngine({ clientData }) {
             <h4 className="font-semibold text-white mb-4 text-lg flex items-center gap-2">
               💡 Path to Improvement
             </h4>
-            <ul className="space-y-3 text-sm">
-              {result.improvement_path.map((step, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="text-blue-400 font-bold mt-0.5">→</span>
-                  <span className="text-slate-300 leading-relaxed">{step}</span>
-                </li>
-              ))}
+            <ul className="space-y-4 text-sm">
+              {result.improvement_path.map((step, i) => {
+                // Convert *word* to bold by splitting on asterisks
+                const parts = step.split(/(\*[^*]+\*)/);
+                return (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                    <span className="text-slate-200 leading-relaxed">
+                      {parts.map((part, idx) => {
+                        if (part.startsWith('*') && part.endsWith('*')) {
+                          return <strong key={idx}>{part.slice(1, -1)}</strong>;
+                        }
+                        return part;
+                      })}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>

@@ -408,8 +408,15 @@ export default function ClientPortal() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-white mb-3 text-sm uppercase tracking-wider">Initial Risk Snapshot</h4>
-                  <pre className="bg-slate-700/50 border border-slate-600/50 p-4 rounded text-sm overflow-auto text-slate-300 max-h-48">{JSON.stringify(applicationResult.created_point, null, 2)}</pre>
+                  <h4 className="font-semibold text-white mb-3 text-sm uppercase tracking-wider">Status</h4>
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-green-500/20 border border-green-400 flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-green-400" />
+                      </div>
+                      <p className="text-green-300 font-semibold">Application submitted successfully</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

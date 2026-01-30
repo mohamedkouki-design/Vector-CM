@@ -25,7 +25,7 @@ class CreditOracle:
         if HAS_GEMINI and self.api_key:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel("gemma-3-27b-it")
+                self.model = genai.GenerativeModel("gemini-2.5-flash")
                 self.enabled = True
                 logger.info("✨ Credit Oracle ENABLED")
             except Exception as e:

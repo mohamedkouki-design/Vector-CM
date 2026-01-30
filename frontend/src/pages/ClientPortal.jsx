@@ -28,10 +28,30 @@ export default function ClientPortal() {
   const submitApplication = async () => {
     setLoading(true);
     try {
-      // Submit application to backend which will create a T0 point in temporal_risk_memory
+      let documentPaths = [];
+      
+      // Step 1: Upload documents if any
+      if (documents.length > 0) {
+        const formDataToUpload = new FormData();
+        documents.forEach(file => {
+          formDataToUpload.append('files', file);
+        });
+        
+        const uploadRes = await axios.post(
+          'http://localhost:8000/api/v1/applications/upload-documents',
+          formDataToUpload,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        
+        // Extract paths from response
+        documentPaths = uploadRes.data.files.map(f => f.path);
+        console.log('Documents uploaded:', documentPaths);
+      }
+      
+      // Step 2: Submit application with document paths
       const body = {
         applicant: formData,
-        documents: documents.map(d => d.name || d)
+        documents: documentPaths  // Use full paths from upload
       };
 
       const res = await axios.post('http://localhost:8000/api/v1/applications/submit', body);

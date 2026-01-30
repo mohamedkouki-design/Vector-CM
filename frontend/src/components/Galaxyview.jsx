@@ -3,6 +3,39 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
+function Stars() {
+  const ref = useRef();
+  
+  useEffect(() => {
+    const starCount = 1000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(starCount * 3);
+    
+    for (let i = 0; i < starCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 300;
+      positions[i + 1] = (Math.random() - 0.5) * 300;
+      positions[i + 2] = (Math.random() - 0.5) * 300;
+    }
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({
+      color: '#94a3b8',
+      size: 0.3,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    if (ref.current) {
+      ref.current.geometry = geometry;
+      ref.current.material = material;
+    }
+  }, []);
+  
+  return <points ref={ref} />;
+}
+
 function ClientOrb({ position, outcome, similarity, onClick, isSelected }) {
   const meshRef = useRef();
   const [hovered, setHovered] = useState(false);
@@ -54,18 +87,20 @@ export default function GalaxyView({ clients = [], onSelectClient, selectedClien
   const [positions, setPositions] = useState([]);
   
   useEffect(() => {
-    // Convert client similarities to 3D positions
-    // Use simple mapping: similarity determines distance from center
+    // Convert client similarities to 3D positions using Fibonacci sphere distribution
     const newPositions = clients.map((client, i) => {
-      const angle = (i / clients.length) * Math.PI * 2;
-      const radius = 5 + (1 - client.similarity) * 10; // Less similar = further away
+      const phi = Math.acos(2 * (i / clients.length) - 1); // Golden angle
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i; // Fibonacci angle
+      
+      // Base radius increases with dissimilarity
+      const baseRadius = 8 + (1 - client.similarity) * 15;
       
       return {
         ...client,
         position: [
-          Math.cos(angle) * radius,
-          (Math.random() - 0.5) * 3, // Random Y spread
-          Math.sin(angle) * radius
+          Math.cos(theta) * Math.sin(phi) * baseRadius,
+          Math.cos(phi) * baseRadius,
+          Math.sin(theta) * Math.sin(phi) * baseRadius
         ]
       };
     });
@@ -75,55 +110,75 @@ export default function GalaxyView({ clients = [], onSelectClient, selectedClien
   
   if (clients.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-space-dark rounded-2xl">
-        <p className="text-gray-400">Run a search to see Galaxy View</p>
+      <div className="w-full h-full flex items-center justify-center bg-slate-950 rounded-2xl border border-slate-800">
+        <div className="text-center">
+          <div className="text-4xl mb-3">🔍</div>
+          <p className="text-slate-400">Run a search to view the Galaxy</p>
+        </div>
       </div>
     );
   }
   
   return (
-    <div className="w-full h-full bg-space-darkest rounded-2xl overflow-hidden relative">
+    <div className="w-full h-full bg-slate-950 rounded-2xl overflow-hidden relative">
       {/* Legend */}
-      <div className="absolute top-4 right-4 z-10 glass-card p-4 space-y-2">
-        <h3 className="font-semibold text-sm mb-2">Outcomes</h3>
+      <div className="absolute top-4 right-4 z-10 bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4 space-y-2 shadow-lg">
+        <h3 className="font-semibold text-sm text-white mb-2">Client Outcomes</h3>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-risk-safe"></div>
-          <span className="text-xs">Repaid</span>
+          <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg" style={{boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'}}></div>
+          <span className="text-xs text-slate-300">Repaid</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-risk-critical"></div>
-          <span className="text-xs">Defaulted</span>
+          <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg" style={{boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'}}></div>
+          <span className="text-xs text-slate-300">Defaulted</span>
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Size = Similarity<br/>
-          Distance = Difference
-        </p>
+        <div className="border-t border-slate-700/50 pt-3 mt-3">
+          <p className="text-xs text-slate-400">
+            <span className="text-blue-400 font-semibold">●</span> Size = Similarity<br/>
+            <span className="text-blue-400 font-semibold">●</span> Distance = Difference
+          </p>
+        </div>
       </div>
       
       {/* 3D Canvas */}
       <Canvas>
-        <PerspectiveCamera makeDefault position={[0, 5, 20]} />
+        <PerspectiveCamera makeDefault position={[0, 40, 5]} />
         <OrbitControls
           enableDamping
           dampingFactor={0.05}
           rotateSpeed={0.5}
-          minDistance={10}
-          maxDistance={50}
+          minDistance={15}
+          maxDistance={80}
         />
         
-        {/* Lighting */}
-        <ambientLight intensity={0.3} />
-        <pointLight position={[10, 10, 10]} intensity={0.8} color="#06b6d4" />
-        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#a855f7" />
+        {/* Lighting - Professional Blue/Slate Theme */}
+        <ambientLight intensity={0.4} />
+        <pointLight position={[15, 15, 15]} intensity={1} color="#3b82f6" />
+        <pointLight position={[-15, -10, -15]} intensity={0.6} color="#64748b" />
+        <pointLight position={[0, 20, 0]} intensity={0.5} color="#1e40af" />
         
-        {/* Stars background */}
+        {/* Stars background with gradient effect */}
         <mesh>
-          <sphereGeometry args={[100, 32, 32]} />
+          <sphereGeometry args={[150, 64, 64]} />
           <meshBasicMaterial
-            color="#0a0e27"
+            color="#0f172a"
             side={THREE.BackSide}
           />
         </mesh>
+        
+        {/* Subtle nebula effect layer */}
+        <mesh position={[0, 0, 0]}>
+          <sphereGeometry args={[145, 32, 32]} />
+          <meshBasicMaterial
+            color="#1e3a8a"
+            transparent
+            opacity={0.1}
+            side={THREE.BackSide}
+          />
+        </mesh>
+        
+        {/* Starfield */}
+        <Stars />
         
         {/* Client orbs */}
         {positions.map((client, i) => (
@@ -145,8 +200,8 @@ export default function GalaxyView({ clients = [], onSelectClient, selectedClien
       </Canvas>
       
       {/* Controls hint */}
-      <div className="absolute bottom-4 left-4 text-xs text-gray-400">
-        Drag to rotate • Scroll to zoom • Click orb to select
+      <div className="absolute bottom-4 left-4 text-xs text-slate-400 bg-slate-900/60 px-3 py-2 rounded-lg backdrop-blur-sm border border-slate-700/30">
+        🖱️ Drag to rotate • 🔍 Scroll to zoom • 👆 Click to select
       </div>
     </div>
   );

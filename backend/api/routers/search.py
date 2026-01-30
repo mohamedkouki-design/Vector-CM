@@ -27,14 +27,28 @@ async def search_similar(request: SearchRequest):
             query_vector=vector.tolist(),
             limit=request.top_k
         )
-        
-        logger.info(f"Found {len(results)} similar clients")
-        
+
+        logger.info(f"Found {len(results)} similar clients (including request client if present)")
+
+        # Filter out the requesting client_id if present in the input payload
+        request_client_id = request.client_data.get('client_id') if isinstance(request.client_data, dict) else None
+        filtered_results = []
+        for r in results:
+            try:
+                payload = getattr(r, 'payload', {}) or {}
+                if request_client_id and payload.get('client_id') == request_client_id:
+                    continue
+            except Exception:
+                pass
+            filtered_results.append(r)
+
+        logger.info(f"Using {len(filtered_results)} similar clients after filtering request client")
+
         # Parse results
         similar_clients = []
         repaid_count = 0
-        
-        for result in results:
+
+        for result in filtered_results:
             outcome = result.payload.get('actual_outcome', 'unknown')
             if outcome == 'repaid':
                 repaid_count += 1
@@ -49,7 +63,7 @@ async def search_similar(request: SearchRequest):
             ))
         
         # Calculate metrics
-        total = len(results)
+        total = len(filtered_results)
         confidence = repaid_count / total if total > 0 else 0
         
         # Determine risk level
@@ -71,7 +85,7 @@ async def search_similar(request: SearchRequest):
         oracle = CreditOracle()
         oracle_explanation = oracle.explain_decision(
             client_data=request.client_data,
-            similar_clients=results,
+            similar_clients=filtered_results,
             decision='approve' if confidence >= 0.7 else 'reject',
             confidence=confidence,
             repaid_count=repaid_count,

@@ -34,14 +34,14 @@ async def check_fraud(request: FraudCheckRequest):
         # Create embedding
         vector = create_embedding(request.client_data)
         
-        # Search fraud collection
-        fraud_results = qdrant.search(
+        # Search fraud collection using qdrant client
+        fraud_results = qdrant.client.query_points(
             collection_name="fraud_patterns",
-            query_vector=vector.tolist(),
+            query=vector.tolist() if hasattr(vector, 'tolist') else vector,
             limit=5
         )
         
-        if not fraud_results:
+        if not fraud_results or not fraud_results.points:
             return FraudCheckResponse(
                 is_suspicious=False,
                 fraud_score=0.0,
@@ -51,7 +51,7 @@ async def check_fraud(request: FraudCheckRequest):
             )
         
         # Analyze top match
-        top_match = fraud_results[0]
+        top_match = fraud_results.points[0]
         fraud_score = top_match.score
         
         # Determine suspicion level
@@ -74,10 +74,10 @@ async def check_fraud(request: FraudCheckRequest):
             
         indicators = []
         fraud_type = 'unknown'
-        if fraud_results and len(fraud_results) > 0:
-            top_fraud = fraud_results[0]
+        if fraud_results and fraud_results.points and len(fraud_results.points) > 0:
+            top_fraud = fraud_results.points[0]
             indicators_str = top_fraud.payload.get('fraud_indicators','')
-            indicators = indicators_str.split(',')[:3] if indicators_str else []
+            indicators = indicators_str.split(',')[:3] if isinstance(indicators_str, str) else indicators_str[:3] if isinstance(indicators_str, list) else []
             fraud_type = top_fraud.payload.get('fraud_type', 'unknown')
         
         # Generate AI explanation
@@ -90,7 +90,7 @@ async def check_fraud(request: FraudCheckRequest):
                     'fraud_id': r.payload.get('fraud_id'),
                     'fraud_type':r.payload.get('fraud_type')
                 }
-                for r in fraud_results[:3]
+                for r in fraud_results.points[:3]
             ],
             fraud_indicators=indicators
         )
@@ -104,7 +104,7 @@ async def check_fraud(request: FraudCheckRequest):
                 "debt_ratio": r.payload.get('debt_ratio', 0),
                 "income_stability": r.payload.get('income_stability', 0)
             }
-            for r in fraud_results[:3]
+            for r in fraud_results.points[:3]
         ]
         
         logger.info(f"Fraud check: score={fraud_score:.3f}, level={alert_level}")

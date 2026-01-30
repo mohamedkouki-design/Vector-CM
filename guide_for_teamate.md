@@ -100,7 +100,5 @@ Navigate to: `http://localhost:5173`
 
 
 TODO: bouton approve/decline
-integration document checker/fraud
 client portal: enter id -> response
-parse ai's responses : fel fraud X remove
-what if fix
+parse ai's responses

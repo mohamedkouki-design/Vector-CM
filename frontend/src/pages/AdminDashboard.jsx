@@ -2,7 +2,7 @@ import GalaxyView from '../components/Galaxyview';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { Search, Users, TrendingUp } from 'lucide-react';
 import { searchSimilar, getStats } from '../services/api';
 import { useEffect } from 'react';
@@ -16,8 +16,10 @@ export default function Dashboard() {
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [selectedSimilarClientId, setSelectedSimilarClientId] = useState(null);
   const [applications, setApplications] = useState([]);
-  
   const [searchTriggered, setSearchTriggered] = useState(false);
+  const [selectedApp, setSelectedApp] = useState(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
   
   // Search query
   const { data: searchResults, isLoading, refetch, error: searchError } = useQuery({
@@ -55,6 +57,43 @@ export default function Dashboard() {
     setSearchTriggered(true);
     refetch();
   };
+
+  const handleAccept = async () => {
+    if (!selectedApp) return;
+    try {
+      await axios.post('http://localhost:8000/api/v1/applications/update-outcome', {
+        client_id: selectedApp.client_id,
+        outcome: 'approved',
+        actual_outcome: 'pending'
+      });
+      alert('Application approved!');
+      setSelectedApp(null);
+    } catch (error) {
+      console.error('Failed to approve:', error);
+      alert('Error approving application');
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!selectedApp || !declineReason.trim()) {
+      alert('Please provide a reason for declining');
+      return;
+    }
+    try {
+      await axios.post('http://localhost:8000/api/v1/applications/update-outcome', {
+        client_id: selectedApp.client_id,
+        outcome: 'rejected',
+        actual_outcome: declineReason
+      });
+      alert('Application declined!');
+      setShowDeclineModal(false);
+      setDeclineReason('');
+      setSelectedApp(null);
+    } catch (error) {
+      console.error('Failed to decline:', error);
+      alert('Error declining application');
+    }
+  };
   
   // Fetch applications on component mount
   useEffect(() => {
@@ -65,6 +104,7 @@ export default function Dashboard() {
           setApplications(response.data.applications);
           if (response.data.applications.length > 0 && !selectedClientId) {
             setSelectedClientId(response.data.applications[0].client_id);
+            setSelectedApp(response.data.applications[0]);
           }
         }
       } catch (error) {
@@ -137,7 +177,10 @@ export default function Dashboard() {
               applications.map((app) => (
                 <button
                   key={app.id}
-                  onClick={() => setSelectedClientId(app.client_id)}
+                  onClick={() => {
+                    setSelectedClientId(app.client_id);
+                    setSelectedApp(app);
+                  }}
                   className={`w-full p-4 rounded-lg text-left transition-all border ${
                     selectedClientId === app.client_id
                       ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/10'
@@ -436,6 +479,67 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-slate-400">No applications found</p>
+            )}
+          </div>
+<div className="mt-8"></div>
+        <div className="mt-8 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Application Decision</h2>
+          <p className="text-slate-400 mb-6">Review the analysis and make a decision on the selected application</p>
+          {/* Accept/Decline Buttons */}
+          {selectedApp && (
+            <div className="flex gap-4 pt-6 border-t border-slate-600/50">
+              <button
+                onClick={handleAccept}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-lg shadow-green-500/20"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Accept Application
+              </button>
+              <button
+                onClick={() => setShowDeclineModal(true)}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-lg shadow-red-500/20"
+              >
+                <XCircle className="w-5 h-5" />
+                Decline Application
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Decline Modal */}
+        {showDeclineModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 max-w-lg w-full animate-slide-up">
+              <h3 className="text-2xl font-bold text-white mb-4">Decline Application</h3>
+              <p className="text-slate-400 mb-4">Provide a reason and improvement tips for the applicant</p>
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="e.g., High debt ratio. Suggestions: Reduce existing debt obligations, increase monthly income, improve payment regularity."
+                className="w-full bg-slate-700/30 border border-slate-600 rounded-lg p-4 text-white placeholder-slate-500 mb-6 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 min-h-32"
+              />
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowDeclineModal(false);
+                    setDeclineReason('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 font-semibold rounded-lg hover:bg-slate-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDecline}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all"
+                >
+                  Confirm Decline
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
             </div>
           </>
         )}

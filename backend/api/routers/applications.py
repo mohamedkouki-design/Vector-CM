@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Dict, List, Any
 from services.qdrant_manager import QdrantManager
@@ -12,11 +12,40 @@ from datetime import datetime
 import logging
 import json
 import random
+import sys
+import os
+import torch
+import shutil
+from pathlib import Path
+from PIL import Image
+from pdf2image import convert_from_path
+from transformers import CLIPProcessor, CLIPModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 client = QdrantClient(host="localhost", port=6333)
+
+# Document fraud detection configuration
+DOCUMENT_COLLECTION_NAME = "document_risk_engine"
+FRAUD_THRESHOLD = 0.96 
+SUSPICION_THRESHOLD = 0.85
+
+# Load CLIP model for document analysis
+try:
+    clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+except Exception as e:
+    logger.warning(f"Could not load CLIP model for document analysis: {e}")
+    clip_model = None
+    clip_processor = None
+
+# Initialize Qdrant manager for fraud pattern storage
+qdrant_manager = QdrantManager()
+
+# Upload directory configuration
+UPLOADS_DIR = os.path.join(os.path.dirname(__file__), '../../uploads')
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 class ApplicationSubmission(BaseModel):
     applicant: Dict[str, Any]
@@ -43,13 +72,239 @@ class CreditHistorySubmission(BaseModel):
     client_id: str = None  # Optional: use existing client_id if provided
 
 
-def document_check_placeholder(documents: List[str]) -> Dict[str, Any]:
-    """Placeholder for document authenticity check.
-    Replace this with actual checks (e.g., call DocumentChecker with file bytes).
-    Returns dict with keys: forged (bool), reason (str)
+class OutcomeUpdateRequest(BaseModel):
+    client_id: str
+    outcome: str
+    actual_outcome: str
+
+
+def get_document_vector(image):
+    """Converts a PIL Image object into a normalized 512-dim vector using CLIP."""
+    if clip_model is None or clip_processor is None:
+        return None
+    
+    inputs = clip_processor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        output = clip_model.get_image_features(**inputs)
+    
+    # Extract tensor from output object if needed
+    image_features = output.pooler_output if hasattr(output, 'pooler_output') else output
+    
+    # Ensure it's a tensor and normalize
+    if not isinstance(image_features, torch.Tensor):
+        image_features = torch.tensor(image_features)
+    
+    # Normalize for Cosine Similarity
+    return image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+
+
+def analyze_document(file_path: str) -> Dict[str, Any]:
+    """Analyzes a document for fraud by comparing against known fake patterns.
+    
+    Returns dict with keys:
+    - forged: bool (True if high confidence fraud detected)
+    - reason: str (explanation)
+    - indicators: list (fraud indicators)
+    - risk_level: str ('safe', 'suspicious', or 'fraud')
+    - score: float (similarity score to nearest fraud pattern)
     """
-    # TODO: integrate real document checker (e.g., import SimpleDocumentChecker)
-    return {"forged": False, "reason": "placeholder: not checked"}
+    
+    if clip_model is None or clip_processor is None:
+        logger.warning("Document analysis unavailable (CLIP model not loaded)")
+        return {"forged": False, "reason": "document analysis unavailable", "risk_level": "unknown", "indicators": [], "score": 0}
+    
+    logger.info(f"Analyzing document: {file_path}")
+    
+    try:
+        # Handle PDF or Image
+        if file_path.lower().endswith('.pdf'):
+            try:
+                poppler_path = os.path.join(os.path.dirname(__file__), '../../doc_check/poppler-25.12.0/Library/bin')
+                images = convert_from_path(file_path, poppler_path=poppler_path)
+                query_img = images[0]
+            except Exception as e:
+                logger.error(f"Could not convert PDF: {e}")
+                return {"forged": False, "reason": f"PDF processing error: {e}", "risk_level": "unknown", "indicators": [], "score": 0}
+        else:
+            query_img = Image.open(file_path)
+        
+        # Vectorize the document
+        query_vector = get_document_vector(query_img)
+        if query_vector is None:
+            return {"forged": False, "reason": "vectorization failed", "risk_level": "unknown", "indicators": [], "score": 0}
+        
+        query_vector = query_vector[0].tolist()
+        
+        # Search for similar fraud patterns using qdrant_manager
+        try:
+            hits = qdrant_manager.client.query_points(
+                collection_name=DOCUMENT_COLLECTION_NAME,
+                query=query_vector,
+                limit=3
+            )
+        except Exception as e:
+            logger.error(f"Failed to query fraud patterns: {e}")
+            return {"forged": False, "reason": "database query failed", "risk_level": "unknown", "indicators": [], "score": 0}
+        
+        if not hits or not hits.points:
+            logger.info("No fraud patterns found in database")
+            return {"forged": False, "reason": "no reference patterns available", "risk_level": "safe", "indicators": [], "score": 0}
+        
+        top_match = hits.points[0]
+        score = top_match.score
+        
+        # Decision logic
+        if score >= FRAUD_THRESHOLD:
+            logger.warning(f"High risk fraud detected: {score:.4f}")
+            return {
+                "forged": True,
+                "reason": f"Visual structure is {score*100:.1f}% identical to known fraud pattern",
+                "risk_level": "fraud",
+                "indicators": ["visual_match_to_fake", "high_similarity"],
+                "score": score
+            }
+        elif score >= SUSPICION_THRESHOLD:
+            logger.warning(f"Suspicious document detected: {score:.4f}")
+            return {
+                "forged": False,
+                "reason": f"Document layout matches known fakes but with variance (similarity: {score:.4f})",
+                "risk_level": "suspicious",
+                "indicators": ["layout_similarity", "requires_review"],
+                "score": score
+            }
+        else:
+            logger.info(f"Document passed fraud check: {score:.4f}")
+            return {
+                "forged": False,
+                "reason": "Document layout is distinct from known fraud patterns",
+                "risk_level": "safe",
+                "indicators": [],
+                "score": score
+            }
+            
+    except Exception as e:
+        logger.error(f"Error analyzing document: {e}")
+        return {
+            "forged": False,
+            "reason": f"Analysis error: {str(e)}",
+            "risk_level": "unknown",
+            "indicators": ["analysis_error"],
+            "score": 0
+        }
+
+
+def document_check_placeholder(documents: List[str], applicant: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Analyzes documents for fraud and creates fraud_patterns points if score >= FRAUD_THRESHOLD.
+    
+    Args:
+        documents: List of full file paths to analyze (from upload endpoint)
+        applicant: Optional applicant data to include in fraud pattern payload
+    
+    Returns:
+        Aggregated analysis result
+    """
+    if not documents:
+        return {"forged": False, "reason": "no documents provided", "indicators": []}
+    
+    # Analyze each document
+    results = []
+    for doc_path in documents:
+        if os.path.exists(doc_path):
+            result = analyze_document(doc_path)
+            results.append(result)
+            
+            # Create fraud_patterns point if score >= FRAUD_THRESHOLD
+            if result.get("score", 0) >= FRAUD_THRESHOLD:
+                try:
+                    fraud_id = f"FRAUD_{uuid.uuid4().hex[:8].upper()}"
+                    
+                    # Build fraud payload matching the structure
+                    fraud_payload = {
+                        "fraud_id": fraud_id,
+                        "fraud_type": "document_forgery",
+                        "archetype": applicant.get("archetype") if applicant else "unknown",
+                        "debt_ratio": float(applicant.get("debt_ratio", 0)) if applicant else 0.0,
+                        "income_stability": float(applicant.get("income_stability", 0)) if applicant else 0.0,
+                        "fraud_narrative": result.get("reason", "Document visual structure matches known forgery patterns"),
+                        "fraud_indicators": result.get("indicators", []),
+                        "document_path": doc_path,
+                        "similarity_score": result.get("score", 0)
+                    }
+                    
+                    # Create embedding for the fraud point
+                    fraud_vector = create_embedding(fraud_payload)
+                    fraud_vector = np.array(fraud_vector)
+                    norm = np.linalg.norm(fraud_vector)
+                    if norm > 0:
+                        fraud_vector = fraud_vector / norm
+                    fraud_vector_list = fraud_vector.tolist() if hasattr(fraud_vector, 'tolist') else list(fraud_vector)
+                    
+                    # Ensure correct dimension
+                    if len(fraud_vector_list) != EMBEDDING_SIZE:
+                        if len(fraud_vector_list) < EMBEDDING_SIZE:
+                            fraud_vector_list += [0.0] * (EMBEDDING_SIZE - len(fraud_vector_list))
+                        else:
+                            fraud_vector_list = fraud_vector_list[:EMBEDDING_SIZE]
+                    
+                    # Create fraud point
+                    fraud_point_id = int(datetime.utcnow().timestamp() * 1000000) % (2**31 - 1)
+                    fraud_point = PointStruct(id=fraud_point_id, payload=fraud_payload, vector=fraud_vector_list)
+                    
+                    # Upsert to fraud_patterns collection
+                    client.upsert(collection_name="fraud_patterns", points=[fraud_point])
+                    logger.info(f"Created fraud pattern point: fraud_id={fraud_id}, score={result.get('score', 0):.4f}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to create fraud pattern point: {e}")
+        else:
+            logger.warning(f"Document not found: {doc_path}")
+            results.append({"forged": False, "reason": f"file not found: {doc_path}", "indicators": [], "score": 0})
+    
+    # Aggregate results
+    forged = any(r.get("forged", False) for r in results)
+    high_fraud_score = any(r.get("score", 0) >= FRAUD_THRESHOLD for r in results)
+    risk_levels = [r.get("risk_level", "unknown") for r in results]
+    
+    return {
+        "forged": forged or high_fraud_score,
+        "reason": "fraud" if forged or high_fraud_score else "documents passed verification",
+        "indicators": ["document_forgery"] if forged or high_fraud_score else [],
+        "risk_levels": risk_levels,
+        "details": results
+    }
+
+
+@router.post("/applications/upload-documents")
+async def upload_documents(files: List[UploadFile] = File(...)):
+    """Upload documents and return their saved file paths."""
+    try:
+        uploaded_paths = []
+        
+        for file in files:
+            # Generate unique filename to avoid conflicts
+            file_ext = Path(file.filename).suffix
+            unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+            file_path = os.path.join(UPLOADS_DIR, unique_filename)
+            
+            # Save file to disk
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            uploaded_paths.append({
+                "original_name": file.filename,
+                "saved_name": unique_filename,
+                "path": file_path
+            })
+            logger.info(f"Document uploaded: {unique_filename}")
+        
+        return {
+            "status": "success",
+            "count": len(uploaded_paths),
+            "files": uploaded_paths
+        }
+    except Exception as e:
+        logger.error(f"File upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
 
 
 @router.get("/applications", response_model=ApplicationListResponse)
@@ -242,29 +497,8 @@ async def submit_application(request: ApplicationSubmission):
                 logger.error(f"Upsert failed (fallback attempt): {e2}")
                 raise HTTPException(status_code=500, detail=f"Failed to store application point: {e2}")
 
-        # Run document check placeholder
-        doc_result = document_check_placeholder(request.documents)
-        if doc_result.get('forged'):
-            # create fraud pattern point using same fields as populate_qdrant
-            fraud_payload = {
-                'fraud_id': f"fraud_{client_id}",
-                'fraud_type': 'document_forgery',
-                'archetype': applicant.get('archetype') or applicant.get('business_type'),
-                'debt_ratio': float(debt_ratio),
-                'income_stability': float(income_stability),
-                'fraud_narrative': doc_result.get('reason', 'forged documents'),
-                'fraud_indicators': doc_result.get('indicators', [])
-            }
-            fraud_point_id = point_id + 1
-            fraud_point = PointStruct(id=fraud_point_id, payload=fraud_payload, vector=vector_list)
-            try:
-                client.upsert(collection_name="fraud_patterns", points=[fraud_point])
-            except Exception as e:
-                logger.error(f"Fraud upsert failed (first attempt): {e}")
-                try:
-                    client.upsert_points(collection_name="fraud_patterns", points=[fraud_point])
-                except Exception as e2:
-                    logger.error(f"Failed to create fraud point: {e2}")
+        # Run document check and create fraud patterns if needed
+        doc_result = document_check_placeholder(request.documents, applicant)
 
         return ApplicationResponse(
             client_id=client_id,
@@ -279,7 +513,61 @@ async def submit_application(request: ApplicationSubmission):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-LOCATIONS = ['Tunis', 'Sfax', 'Sousse', 'Gabes', 'Ariana', 'Ben Arous', 'Bizerte', 'Nabeul']
+@router.post("/applications/update-outcome", response_model=Dict[str, Any])
+async def update_outcome(request: OutcomeUpdateRequest):
+    """Update application outcome in credit_history_memory."""
+    try:
+        # Get all points and find the one with matching client_id
+        all_points = []
+        offset = 0
+        batch_size = 1000
+        
+        while True:
+            batch, next_offset = client.scroll(
+                collection_name="credit_history_memory",
+                limit=batch_size,
+                offset=offset,
+                with_payload=True,
+                with_vectors=True
+            )
+            if not batch:
+                break
+            all_points.extend(batch)
+            if next_offset == offset or len(batch) < batch_size:
+                break
+            offset = next_offset
+        
+        # Find point with matching client_id
+        target_point = None
+        for point in all_points:
+            if point.payload.get('client_id') == request.client_id:
+                target_point = point
+                break
+        
+        if not target_point:
+            raise HTTPException(status_code=404, detail=f"Client {request.client_id} not found")
+        
+        # Update payload
+        target_point.payload['outcome'] = request.outcome
+        target_point.payload['actual_outcome'] = request.actual_outcome
+        
+        # Upsert updated point
+        client.upsert(
+            collection_name="credit_history_memory",
+            points=[target_point]
+        )
+        
+        logger.info(f"Updated {request.client_id}: outcome={request.outcome}, actual_outcome={request.actual_outcome}")
+        
+        return {
+            'status': 'success',
+            'client_id': request.client_id,
+            'outcome': request.outcome,
+            'actual_outcome': request.actual_outcome
+        }
+    except Exception as e:
+        logger.error(f"Failed to update outcome: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/applications/add-to-credit-history", response_model=Dict[str, Any])

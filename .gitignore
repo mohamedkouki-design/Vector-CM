@@ -21,5 +21,7 @@ backend/models/__pycache__/
 qdrant_storage/
 backend/*.pyc
 backend/data/
+backend/doc_check/dataset/
+backend/doc_check/sample_documents/
 data/sample_documents/
 frontend/build/

@@ -54,6 +54,10 @@ async def check_fraud(request: FraudCheckRequest):
         top_match = fraud_results.points[0]
         fraud_score = top_match.score
         
+        # Deduct 0.2 from fraud_score if it's less than 0.8
+        if fraud_score < 0.8:
+            fraud_score = max(0.0, fraud_score - 0.2)
+        
         # Determine suspicion level
         if fraud_score >= 0.90:
             is_suspicious = True

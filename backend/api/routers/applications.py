@@ -309,77 +309,123 @@ async def upload_documents(files: List[UploadFile] = File(...)):
 
 @router.get("/applications", response_model=ApplicationListResponse)
 async def get_applications(client_id: str = None, limit: int = 50):
-    """Fetch applications from temporal_risk_memory where client has exactly 1 T0 point."""
+    """Fetch recent applications from `credit_history_memory` where payload.outcome == 'pending'."""
     try:
-        # Scroll through temporal_risk_memory collection and group by client_id
-        all_points_by_client = {}
+        applications = []
         offset = 0
         batch_size = 1000
         max_iterations = 100
         iterations = 0
-        
+
         while iterations < max_iterations:
             iterations += 1
             try:
                 batch, next_offset = client.scroll(
-                    collection_name="temporal_risk_memory",
+                    collection_name="credit_history_memory",
                     limit=batch_size,
                     offset=offset,
                     with_payload=True,
                     with_vectors=False
                 )
             except Exception as e:
-                logger.error(f"Failed to scroll temporal_risk_memory: {e}")
+                logger.error(f"Failed to scroll credit_history_memory: {e}")
                 break
-            
+
             if not batch:
                 break
-            
-            # Group points by client_id
+
             for point in batch:
-                cid = point.payload.get("client_id")
-                if cid:
-                    if cid not in all_points_by_client:
-                        all_points_by_client[cid] = []
-                    all_points_by_client[cid].append(point)
-            
-            # If next_offset is same as current offset or no more batches, break
-            if next_offset == offset or len(batch) < batch_size:
-                break
-            
-            offset = next_offset
-        
-        # Filter to only clients with exactly 1 T0 point
-        applications = []
-        for cid, pts in all_points_by_client.items():
-            if len(pts) == 1:
-                point = pts[0]
-                # Check if it's a T0 point
-                timestamp = point.payload.get("timestamp", "")
-                if timestamp.startswith("T0"):
-                    # Optionally filter by client_id if provided
+                try:
+                    payload = getattr(point, 'payload', {})
+                    if not payload:
+                        continue
+                    # Only include pending outcomes
+                    if payload.get('outcome') != 'pending':
+                        continue
+
+                    cid = payload.get('client_id')
                     if client_id and cid != client_id:
                         continue
-                    
+
+                    # Map to legacy application response shape expected by frontend
+                    debt_ratio = payload.get('debt_ratio')
+                    income_stability = payload.get('income_stability')
+                    payment_regularity = payload.get('payment_regularity')
+
+                    # Compute fallback risk_score if not present in credit_history point
+                    try:
+                        if payload.get('risk_score') is not None:
+                            risk_score = payload.get('risk_score')
+                        else:
+                            dr = float(debt_ratio) if debt_ratio is not None else 0.0
+                            inc = float(income_stability) if income_stability is not None else 0.0
+                            pay = float(payment_regularity) if payment_regularity is not None else 0.0
+                            risk_score = round(dr * 0.6 + (1 - inc) * 0.2 + (1 - pay) * 0.2, 3)
+                    except Exception:
+                        risk_score = payload.get('risk_score')
+
+                    # Attempt to find matching T0 point in temporal_risk_memory to get authoritative date and risk_score and use its id
+                    temporal_date = None
+                    temporal_risk = None
+                    temporal_id = None
+                    try:
+                        t_offset = 0
+                        t_batch_size = 500
+                        t_iters = 0
+                        while t_iters < 20:
+                            t_iters += 1
+                            t_batch, t_next = client.scroll(
+                                collection_name='temporal_risk_memory',
+                                limit=t_batch_size,
+                                offset=t_offset,
+                                with_payload=True,
+                                with_vectors=False
+                            )
+                            if not t_batch:
+                                break
+                            for tpoint in t_batch:
+                                t_payload = getattr(tpoint, 'payload', {}) or {}
+                                if t_payload.get('client_id') == cid and str(t_payload.get('timestamp', '')).startswith('T0'):
+                                    temporal_date = t_payload.get('date')
+                                    temporal_risk = t_payload.get('risk_score')
+                                    temporal_id = getattr(tpoint, 'id', None)
+                                    break
+                            if temporal_id is not None:
+                                break
+                            if t_next == t_offset or len(t_batch) < t_batch_size:
+                                break
+                            t_offset = t_next
+                    except Exception as e:
+                        logger.debug(f"Temporal lookup failed for {cid}: {e}")
+
+                    # Prefer temporal values if found
+                    final_date = temporal_date or (payload.get('date') or payload.get('created_at') or None)
+                    final_risk = temporal_risk if temporal_risk is not None else risk_score
+                    final_id = temporal_id or getattr(point, 'id', None)
+
                     applications.append({
-                        "id": point.id,
-                        "client_id": point.payload.get("client_id"),
-                        "timestamp": point.payload.get("timestamp"),
-                        "date": point.payload.get("date"),
-                        "risk_score": point.payload.get("risk_score"),
-                        "status": point.payload.get("status"),
-                        "debt_ratio": point.payload.get("debt_ratio"),
-                        "income_stability": point.payload.get("income_stability"),
-                        "payment_regularity": point.payload.get("payment_regularity")
+                        'id': final_id,
+                        'client_id': cid,
+                        'timestamp': payload.get('timestamp', 'T0_application'),
+                        'date': final_date,
+                        'risk_score': final_risk,
+                        'status': payload.get('status') or payload.get('outcome') or 'pending',
+                        'debt_ratio': debt_ratio,
+                        'income_stability': income_stability,
+                        'payment_regularity': payment_regularity
                     })
-        
-        # Sort by date descending (newest first)
-        applications.sort(key=lambda x: x.get("date", ""), reverse=True)
-        
-        return ApplicationListResponse(
-            applications=applications[:limit],
-            total=len(applications)
-        )
+                except Exception:
+                    continue
+
+            if next_offset == offset or len(batch) < batch_size:
+                break
+
+            offset = next_offset
+
+        # Sort by id descending as a proxy for recency
+        applications.sort(key=lambda x: x.get('id') or 0, reverse=True)
+
+        return ApplicationListResponse(applications=applications[:limit], total=len(applications))
     except Exception as e:
         logger.error(f"Failed to fetch applications: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -551,11 +597,37 @@ async def update_outcome(request: OutcomeUpdateRequest):
         target_point.payload['outcome'] = request.outcome
         target_point.payload['actual_outcome'] = request.actual_outcome
         
-        # Upsert updated point
-        client.upsert(
-            collection_name="credit_history_memory",
-            points=[target_point]
-        )
+        # Convert scrolled Record into PointStruct for upsert
+        try:
+            vec = None
+            # Record may have attribute 'vector' or 'vectors'
+            if hasattr(target_point, 'vector'):
+                vec = getattr(target_point, 'vector')
+            elif hasattr(target_point, 'vectors'):
+                vec = getattr(target_point, 'vectors')
+
+            upsert_point = PointStruct(
+                id=getattr(target_point, 'id', None),
+                payload=getattr(target_point, 'payload', {}),
+                vector=vec
+            )
+
+            client.upsert(
+                collection_name="credit_history_memory",
+                points=[upsert_point]
+            )
+        except Exception as e:
+            # Fallback: try to build a dict payload accepted by the client
+            try:
+                point_dict = {
+                    'id': getattr(target_point, 'id', None),
+                    'payload': getattr(target_point, 'payload', {}),
+                    'vector': getattr(target_point, 'vector', None) or getattr(target_point, 'vectors', None)
+                }
+                client.upsert(collection_name="credit_history_memory", points=[point_dict])
+            except Exception as e2:
+                logger.error(f"Failed to upsert updated point: {e2}")
+                raise
         
         logger.info(f"Updated {request.client_id}: outcome={request.outcome}, actual_outcome={request.actual_outcome}")
         

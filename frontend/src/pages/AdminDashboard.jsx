@@ -68,6 +68,7 @@ export default function Dashboard() {
       });
       alert('Application approved!');
       setSelectedApp(null);
+      window.location.reload();
     } catch (error) {
       console.error('Failed to approve:', error);
       alert('Error approving application');
@@ -89,6 +90,7 @@ export default function Dashboard() {
       setShowDeclineModal(false);
       setDeclineReason('');
       setSelectedApp(null);
+      window.location.reload();
     } catch (error) {
       console.error('Failed to decline:', error);
       alert('Error declining application');
@@ -479,10 +481,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-slate-400">No applications found</p>
-            )}
-          </div>
+            </div>
 <div className="mt-8"></div>
         <div className="mt-8 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
           <h2 className="text-2xl font-bold text-white mb-4">Application Decision</h2>
@@ -540,7 +539,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-            </div>
           </>
         )}
       </div>

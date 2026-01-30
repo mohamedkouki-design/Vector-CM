@@ -101,4 +101,3 @@ Navigate to: `http://localhost:5173`
 
 TODO: bouton approve/decline
 client portal: enter id -> response
-parse ai's responses

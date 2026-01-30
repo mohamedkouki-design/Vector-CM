@@ -8,7 +8,7 @@ function ClientOrb({ position, outcome, similarity, onClick, isSelected }) {
   const [hovered, setHovered] = useState(false);
   
   // Color based on outcome
-  const color = outcome === 'repaid' ? '#10b981' : '#ef4444';
+  const color = outcome == 'repaid' ? '#10b981' : '#ef4444';
   const size = 0.2 + (similarity * 0.3); // Bigger = more similar
   
   useEffect(() => {

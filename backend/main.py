@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import search,counterfactual,fraud,multimodal,temporal,network,voice
+from api.routers import search,counterfactual,fraud,multimodal,temporal,network,voice,applications
 import uvicorn
 import logging
 
@@ -42,6 +42,7 @@ async def health():
 app.include_router(search.router, prefix="/api/v1", tags=["search"])
 app.include_router(counterfactual.router, prefix="/api/v1", tags=["counterfactual"])
 app.include_router(fraud.router, prefix="/api/v1", tags=["fraud"])
+app.include_router(applications.router, prefix="/api/v1", tags=["applications"])
 app.include_router(multimodal.router, prefix="/api/v1", tags=["multimodal"])
 app.include_router(temporal.router, prefix="/api/v1", tags=["temporal"])
 app.include_router(network.router, prefix="/api/v1", tags=["network"])

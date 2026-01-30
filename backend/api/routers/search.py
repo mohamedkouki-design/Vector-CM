@@ -35,8 +35,8 @@ async def search_similar(request: SearchRequest):
         repaid_count = 0
         
         for result in results:
-            outcome = result.payload.get('outcome', 'unknown')
-            if outcome == 'approved':
+            outcome = result.payload.get('actual_outcome', 'unknown')
+            if outcome == 'repaid':
                 repaid_count += 1
             
             similar_clients.append(SimilarClient(
@@ -77,6 +77,7 @@ async def search_similar(request: SearchRequest):
             repaid_count=repaid_count,
             total_count=total
         )
+        print(oracle_explanation)
     
         
         
@@ -106,4 +107,23 @@ async def get_stats():
             "distance_metric": str(collection.config.params.vectors.distance)
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/search/client/{client_id}")
+async def get_client_payload(client_id: str):
+    """Retrieve the full stored payload for a client by `client_id` from Qdrant."""
+    try:
+        # Attempt to fetch the point from the collection
+        point = qdrant.client.get_point(collection_name="credit_history_memory", id=client_id)
+
+        if not point or not getattr(point, 'payload', None):
+            raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+        return {"client_id": client_id, "payload": point.payload}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch client {client_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

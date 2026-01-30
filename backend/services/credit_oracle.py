@@ -25,9 +25,9 @@ class CreditOracle:
         if HAS_GEMINI and self.api_key:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel("gemini-1.5-flash")
+                self.model = genai.GenerativeModel("gemma-3-27b-it")
                 self.enabled = True
-                logger.info("✨ Credit Oracle ENABLED - Using Google Gemini")
+                logger.info("✨ Credit Oracle ENABLED")
             except Exception as e:
                 self.enabled = False
                 logger.error(f"Failed to initialize Gemini: {e}")
@@ -44,7 +44,7 @@ class CreditOracle:
                 prompt,
                 generation_config={
                     "temperature": temperature,
-                    "max_output_tokens": 300
+                    "max_output_tokens": 1000
                 }
             )
             return response.text.strip()
@@ -82,7 +82,7 @@ class CreditOracle:
 
         prompt = f"""
 You are a compassionate credit analyst at a microfinance institution in Tunisia.
-
+do not mention the response nor use quotation marks in your response.
 APPLICANT PROFILE:
 - Occupation: {archetype.replace('_', ' ')}
 - Employment type: {employment}
@@ -93,7 +93,7 @@ APPLICANT PROFILE:
 DECISION: {decision.upper()}
 Confidence: {confidence:.1%}
 
-Write 2–3 short sentences that:
+Write 2 short sentences that:
 - Feel human and empathetic
 - Explain the decision using similar past cases
 - If rejected, offer hope and concrete next steps

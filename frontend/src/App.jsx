@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AnimatedBackground from './components/AnimatedBackground';
 import LandingPage from './pages/LandingPage';
-import ClientPortal from './pages/ClinetPortal';
+import ClientPortal from './pages/ClientPortal';
 import AdminDashboard from './pages/AdminDashboard';
 
 const queryClient = new QueryClient({

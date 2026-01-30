@@ -5,6 +5,9 @@ from services.qdrant_manager import QdrantManager
 from services.embeddings import create_embedding
 import logging
 from services.credit_oracle import get_oracle
+from qdrant_client.models import PointStruct
+import uuid
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Upload, ArrowLeft, CheckCircle, Clock } from 'lucide-react';
 import axios from 'axios';
 import VoiceAssistedForm from '../components/VoiceAssistedForm';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function ClientPortal() {
   const [step, setStep] = useState(1);
@@ -11,6 +12,9 @@ export default function ClientPortal() {
     archetype: 'market_vendor',
     years_active: 5,
     monthly_income: 1500,
+    debt_ratio: 0.45,
+    income_stability: 0.85,
+    payment_regularity: 0.88
   });
   const [documents, setDocuments] = useState([]);
   const [applicationResult, setApplicationResult] = useState(null);
@@ -24,20 +28,14 @@ export default function ClientPortal() {
   const submitApplication = async () => {
     setLoading(true);
     try {
-      // In real app, would upload documents and submit application
-      // Simulating for demo
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setApplicationResult({
-        status: 'approved',
-        message: 'Congratulations! Your application has been approved.',
-        next_steps: [
-          'A loan officer will contact you within 24 hours',
-          'Please bring your original documents to our office',
-          'Loan disbursement will occur within 3 business days'
-        ]
-      });
-      
+      // Submit application to backend which will create a T0 point in temporal_risk_memory
+      const body = {
+        applicant: formData,
+        documents: documents.map(d => d.name || d)
+      };
+
+      const res = await axios.post('http://localhost:8000/api/v1/applications/submit', body);
+      setApplicationResult(res.data);
       setStep(4);
     } catch (error) {
       console.error('Application failed:', error);
@@ -48,6 +46,7 @@ export default function ClientPortal() {
   const [useVoiceInput, setUseVoiceInput] = useState(false);
   
   return (
+    <ErrorBoundary>
     <div className="min-h-screen p-8">
       <div className="max-w-3xl mx-auto">
         {/* Back button */}
@@ -85,40 +84,40 @@ export default function ClientPortal() {
         </div>
         {/* Voice/Manual Toggle */}
         <div className="flex justify-center mb-8">
-        <div className="inline-flex bg-space-dark rounded-lg p-1">
+          <div className="inline-flex bg-space-dark rounded-lg p-1">
             <button
-            onClick={() => setUseVoice(false)}
-            className={`px-6 py-2 rounded-lg transition-all ${
-                !useVoice ? 'bg-accent-cyan text-white' : 'text-gray-400'
-            }`}
+              onClick={() => setUseVoiceInput(false)}
+              className={`px-6 py-2 rounded-lg transition-all ${
+                !useVoiceInput ? 'bg-accent-cyan text-white' : 'text-gray-400'
+              }`}
             >
-            📝 Manual Entry
+              📝 Manual Entry
             </button>
             <button
-            onClick={() => setUseVoice(true)}
-            className={`px-6 py-2 rounded-lg transition-all ${
-                useVoice ? 'bg-accent-cyan text-white' : 'text-gray-400'
-            }`}
+              onClick={() => setUseVoiceInput(true)}
+              className={`px-6 py-2 rounded-lg transition-all ${
+                useVoiceInput ? 'bg-accent-cyan text-white' : 'text-gray-400'
+              }`}
             >
-            🎤 Voice Input
+              🎤 Voice Input
             </button>
-        </div>
+          </div>
         </div>
 
         {/* Voice Mode */}
-        {useVoice && step === 1 && (
-        <VoiceAssistedForm 
+        {useVoiceInput && step === 1 && (
+          <VoiceAssistedForm 
             onSubmit={(data) => {
-            setFormData({
+              setFormData({
                 ...formData,
                 name: data.name || formData.name,
                 archetype: data.archetype,
                 years_active: data.years_active,
                 monthly_income: data.monthly_income
-            });
-            setStep(2);
+              });
+              setStep(2);
             }}
-        />
+          />
         )}
         
         {/* Step 1: Basic Info */}
@@ -170,6 +169,51 @@ export default function ClientPortal() {
                 />
               </div>
               
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Debt Ratio: {(formData.debt_ratio * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.debt_ratio}
+                  onChange={(e) => setFormData({...formData, debt_ratio: parseFloat(e.target.value)})}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Income Stability: {(formData.income_stability * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.income_stability}
+                  onChange={(e) => setFormData({...formData, income_stability: parseFloat(e.target.value)})}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Payment Regularity: {(formData.payment_regularity * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.payment_regularity}
+                  onChange={(e) => setFormData({...formData, payment_regularity: parseFloat(e.target.value)})}
+                  className="w-full"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Average Monthly Income (TND)
@@ -309,40 +353,62 @@ export default function ClientPortal() {
         
         {/* Step 4: Result */}
         {step === 4 && applicationResult && (
-          <div className="glass-card animate-scale-in text-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-risk-safe to-accent-cyan rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse-glow">
-              <CheckCircle className="w-10 h-10 text-white" />
+          applicationResult.created_point ? (
+            <div className="glass-card animate-scale-in">
+              <h2 className="text-2xl font-semibold mb-4">Application Submitted</h2>
+              <p className="text-gray-400 mb-4">Your application has been recorded. An admin will review your documents and the initial risk snapshot.</p>
+
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">Client ID</h4>
+                <div className="p-3 bg-space-dark rounded">{applicationResult.client_id}</div>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">T0 Snapshot</h4>
+                <pre className="bg-space-dark p-3 rounded text-sm overflow-auto">{JSON.stringify(applicationResult.created_point, null, 2)}</pre>
+              </div>
+
+              <div className="mt-6">
+                <Link to="/" className="btn-primary">Return to Home</Link>
+              </div>
             </div>
-            
-            <h2 className="text-3xl font-bold mb-4 text-risk-safe">
-              Application {applicationResult.status === 'approved' ? 'Approved!' : 'Received'}
-            </h2>
-            
-            <p className="text-gray-300 mb-8 max-w-md mx-auto">
-              {applicationResult.message}
-            </p>
-            
-            <div className="bg-space-dark rounded-lg p-6 mb-8 text-left">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-accent-cyan" />
-                Next Steps:
-              </h3>
-              <ul className="space-y-3">
-                {applicationResult.next_steps.map((step, i) => (
-                  <li key={i} className="flex items-start gap-2 text-gray-300">
-                    <span className="text-accent-cyan mt-1">{i + 1}.</span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ul>
+          ) : (
+            <div className="glass-card animate-scale-in text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-risk-safe to-accent-cyan rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse-glow">
+                <CheckCircle className="w-10 h-10 text-white" />
+              </div>
+
+              <h2 className="text-3xl font-bold mb-4 text-risk-safe">
+                Application {applicationResult.status === 'approved' ? 'Approved!' : 'Received'}
+              </h2>
+
+              <p className="text-gray-300 mb-8 max-w-md mx-auto">
+                {applicationResult.message}
+              </p>
+
+              <div className="bg-space-dark rounded-lg p-6 mb-8 text-left">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-accent-cyan" />
+                  Next Steps:
+                </h3>
+                <ul className="space-y-3">
+                  {applicationResult.next_steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-2 text-gray-300">
+                      <span className="text-accent-cyan mt-1">{i + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <Link to="/" className="btn-primary">
+                Return to Home
+              </Link>
             </div>
-            
-            <Link to="/" className="btn-primary">
-              Return to Home
-            </Link>
-          </div>
+          )
         )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

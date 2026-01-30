@@ -23,8 +23,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # Setup environment variables
-cp .env.example .env
-
 # Edit .env and add your Google API key:
 # GOOGLE_API_KEY=your-actual-key-here
 ```
@@ -37,7 +35,6 @@ cd ../frontend
 npm install
 
 # Setup environment variables
-cp .env.example .env
 ```
 
 ### 4️⃣ Start Qdrant Database
@@ -99,3 +96,11 @@ Navigate to: `http://localhost:5173`
 3. **Credit Oracle** - Check AI explanations appear
 4. **Fraud Detection** - Upload test data
 5. **Temporal Evolution** - View client journey over time
+
+
+
+TODO: bouton approve/decline
+integration document checker/fraud
+client portal: enter id -> response
+parse ai's responses : fel fraud X remove
+what if fix

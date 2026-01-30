@@ -11,17 +11,35 @@ export default function TemporalEvolution({ clientId }) {
   const fetchTemporalData = async () => {
     setLoading(true);
     try {
-      // In production, this would query temporal_risk_memory collection
-      // For demo, we'll generate realistic data
-      
       const response = await axios.get(`http://localhost:8000/api/v1/temporal/${clientId}`);
-      setEvolutionData(response.data);
+      const { client_id, snapshots } = response.data;
+      
+      // Determine outcome from latest risk score
+      const latestSnapshot = snapshots[snapshots.length - 1];
+      const final_outcome = latestSnapshot.status === 'good' ? 'repaid' : 'defaulted';
+      
+      // Generate narrative based on trend
+      const firstRisk = snapshots[0].risk_score;
+      const lastRisk = snapshots[snapshots.length - 1].risk_score;
+      const riskChange = lastRisk - firstRisk;
+      
+      let narrative;
+      if (riskChange < -0.1) {
+        narrative = `Client ${client_id} demonstrated improving financial health over 6 months, with decreasing risk score from ${(firstRisk * 100).toFixed(0)}% to ${(lastRisk * 100).toFixed(0)}%. This positive trajectory indicates reliable repayment capacity.`;
+      } else if (riskChange > 0.1) {
+        narrative = `Client ${client_id}'s financial situation deteriorated over 6 months with increasing risk from ${(firstRisk * 100).toFixed(0)}% to ${(lastRisk * 100).toFixed(0)}%. Monitoring required.`;
+      } else {
+        narrative = `Client ${client_id} maintained stable financial metrics over the 6-month period, with risk score hovering around ${(lastRisk * 100).toFixed(0)}%. Status remains ${latestSnapshot.status}.`;
+      }
+      
+      setEvolutionData({
+        client_id,
+        snapshots,
+        final_outcome,
+        narrative
+      });
     } catch (error) {
       console.error('Failed to fetch temporal data:', error);
-      
-      // Fallback to mock data for demo
-      const mockData = generateMockTemporalData(clientId);
-      setEvolutionData(mockData);
     } finally {
       setLoading(false);
     }
@@ -31,9 +49,10 @@ export default function TemporalEvolution({ clientId }) {
     if (clientId) {
       fetchTemporalData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
   
-  const generateMockTemporalData = (id) => {
+ /* const generateMockTemporalData = (id) => {
     // Generate realistic temporal progression
     const isGoodClient = Math.random() > 0.3;
     
@@ -75,7 +94,7 @@ export default function TemporalEvolution({ clientId }) {
         ? "Client demonstrated strong financial discipline over 6 months, reducing debt by 33% while improving income stability. This positive trajectory indicates reliable repayment capacity."
         : "Client's financial situation deteriorated over 6 months with increasing debt and declining payment regularity. Early warning signs were evident at T1 but accelerated by T2."
     };
-  };
+  };*/
   
   if (!clientId) {
     return (
@@ -129,13 +148,18 @@ export default function TemporalEvolution({ clientId }) {
   }
   
   // Prepare chart data
-  const chartData = snapshots.map((s, i) => ({
-    name: s.timestamp,
-    'Risk Score': (s.risk_score * 100).toFixed(1),
-    'Debt Ratio': (s.debt_ratio * 100).toFixed(1),
-    'Income Stability': (s.income_stability * 100).toFixed(1),
-    'Payment Regularity': (s.payment_regularity * 100).toFixed(1),
-  }));
+  const chartData = snapshots.map((s) => {
+    const timestampLabel = s.timestamp === 'T0_application' ? 'T0: App' :
+                          s.timestamp === 'T1_3months' ? 'T1: 3mo' :
+                          'T2: 6mo';
+    return {
+      name: timestampLabel,
+      'Risk Score': (s.risk_score * 100).toFixed(1),
+      'Debt Ratio': (s.debt_ratio * 100).toFixed(1),
+      'Income Stability': (s.income_stability * 100).toFixed(1),
+      'Payment Regularity': (s.payment_regularity * 100).toFixed(1),
+    };
+  });
   
   const metrics = [
     { key: 'Risk Score', color: '#ef4444', label: 'Risk Score' },
@@ -164,31 +188,45 @@ export default function TemporalEvolution({ clientId }) {
       
       {/* Timeline Status */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {snapshots.map((snapshot, i) => (
+        {snapshots.map((snapshot, i) => {
+          // Format timestamp labels
+          const timestampLabel = snapshot.timestamp === 'T0_application' ? 'T0: Application' :
+                                snapshot.timestamp === 'T1_3months' ? 'T1: 3 Months' :
+                                'T2: 6 Months';
+          
+          // Status color mapping
+          const statusStyles = {
+            'pending': 'border-gray-500 bg-space-dark',
+            'good': 'border-risk-safe bg-risk-safe/10',
+            'improving': 'border-accent-cyan bg-accent-cyan/10',
+            'warning': 'border-risk-medium bg-risk-medium/10',
+            'default': 'border-risk-critical bg-risk-critical/10'
+          };
+          
+          const statusTextColors = {
+            'pending': 'text-gray-400',
+            'good': 'text-risk-safe',
+            'improving': 'text-accent-cyan',
+            'warning': 'text-risk-medium',
+            'default': 'text-risk-critical'
+          };
+          
+          return (
           <div 
             key={i}
-            className={`p-4 rounded-lg border-2 ${
-              i === 0 ? 'border-gray-500 bg-space-dark' :
-              i === 1 ? (snapshot.status === 'improving' ? 'border-accent-cyan bg-accent-cyan/10' : 'border-risk-medium bg-risk-medium/10') :
-              (snapshot.status === 'good' ? 'border-risk-safe bg-risk-safe/10' : 'border-risk-critical bg-risk-critical/10')
-            }`}
+            className={`p-4 rounded-lg border-2 ${statusStyles[snapshot.status] || statusStyles['pending']}`}
           >
-            <div className="text-sm text-gray-400 mb-1">{snapshot.timestamp}</div>
+            <div className="text-sm text-gray-400 mb-1">{timestampLabel}</div>
             <div className="text-xs text-gray-500 mb-2">{snapshot.date}</div>
             <div className="text-2xl font-bold mb-1">
               {(snapshot.risk_score * 100).toFixed(0)}%
             </div>
-            <div className={`text-xs font-semibold uppercase ${
-              snapshot.status === 'good' ? 'text-risk-safe' :
-              snapshot.status === 'improving' ? 'text-accent-cyan' :
-              snapshot.status === 'warning' ? 'text-risk-medium' :
-              snapshot.status === 'default' ? 'text-risk-critical' :
-              'text-gray-400'
-            }`}>
+            <div className={`text-xs font-semibold uppercase ${statusTextColors[snapshot.status] || statusTextColors['pending']}`}>
               {snapshot.status}
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
       
       {/* Metric Selector */}

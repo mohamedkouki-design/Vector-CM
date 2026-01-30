@@ -5,28 +5,40 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Search, Users, TrendingUp } from 'lucide-react';
 import { searchSimilar, getStats } from '../services/api';
+import { useEffect } from 'react';
+import axios from 'axios';
 import CounterfactualEngine from '../components/CounterfactualEngine';
 import FraudAlert from '../components/FraudAlert';
 import TemporalEvolution from '../components/TemporalEvolution';
 import TrustRings from '../components/TrustRings';
 
 export default function Dashboard() {
-  const [clientData, setClientData] = useState({
-    archetype: 'market_vendor',
-    debt_ratio: 0.45,
-    years_active: 15,
-    income_stability: 0.85,
-    payment_regularity: 0.88,
-    monthly_income: 2500
-  });
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [selectedSimilarClientId, setSelectedSimilarClientId] = useState(null);
+  const [applications, setApplications] = useState([]);
   
   const [searchTriggered, setSearchTriggered] = useState(false);
   
   // Search query
-  const { data: searchResults, isLoading, refetch } = useQuery({
-    queryKey: ['search', clientData],
-    queryFn: () => searchSimilar(clientData, 50),
-    enabled: searchTriggered
+  const { data: searchResults, isLoading, refetch, error: searchError } = useQuery({
+    queryKey: ['search', selectedClientId],
+    queryFn: () => {
+      const appToSearch = applications.find(app => app.client_id === selectedClientId);
+      if (!appToSearch) {
+        console.warn('No application found for client:', selectedClientId);
+        return null;
+      }
+      return searchSimilar({
+        archetype: 'market_vendor',
+        debt_ratio: appToSearch.debt_ratio || 0.45,
+        years_active: 15,
+        income_stability: appToSearch.income_stability || 0.85,
+        payment_regularity: appToSearch.payment_regularity || 0.88,
+        monthly_income: 2500
+      }, 50);
+    },
+    enabled: searchTriggered && !!selectedClientId,
+    retry: 1
   });
   
   // Stats query
@@ -36,10 +48,31 @@ export default function Dashboard() {
   });
   
   const handleSearch = () => {
+    if (!selectedClientId) {
+      console.warn('No client selected');
+      return;
+    }
     setSearchTriggered(true);
     refetch();
   };
-  const [selectedClientId, setSelectedClientId] = useState(null);
+  
+  // Fetch applications on component mount
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/v1/applications?limit=50');
+        if (response.data && response.data.applications) {
+          setApplications(response.data.applications);
+          if (response.data.applications.length > 0 && !selectedClientId) {
+            setSelectedClientId(response.data.applications[0].client_id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch applications:', error);
+      }
+    };
+    fetchApplications();
+  }, []);
   
   return (
     <div className="min-h-screen p-8 animate-fade-in">
@@ -47,6 +80,14 @@ export default function Dashboard() {
         <ArrowLeft className="w-4 h-4" />
         Back to Home
       </Link>
+      
+      {/* Error message if search failed */}
+      {searchError && (
+        <div className="mb-8 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+          <p className="text-red-300">Search error: {searchError.message}</p>
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto">
         
         {/* Enhanced Header with Gradient */}
@@ -82,104 +123,63 @@ export default function Dashboard() {
           ))}
         </div>
         
-        {/* Search Form */}
+        {/* Applications List */}
         <div className="glass-card mb-8">
-          <h2 className="text-2xl font-bold mb-6">Client Profile</h2>
+          <h2 className="text-2xl font-bold mb-6">Applications Board</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Business Type
-              </label>
-              <select
-                value={clientData.archetype}
-                onChange={(e) => setClientData({...clientData, archetype: e.target.value})}
-                className="w-full bg-space-dark border border-space-light rounded-lg px-4 py-2"
-              >
-                <option value="market_vendor">Market Vendor</option>
-                <option value="craftsman">Craftsman</option>
-                <option value="gig_worker">Gig Worker</option>
-                <option value="home_business">Home Business</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Years Active: {clientData.years_active}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="30"
-                step="0.5"
-                value={clientData.years_active}
-                onChange={(e) => setClientData({...clientData, years_active: parseFloat(e.target.value)})}
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Debt Ratio: {(clientData.debt_ratio * 100).toFixed(0)}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={clientData.debt_ratio}
-                onChange={(e) => setClientData({...clientData, debt_ratio: parseFloat(e.target.value)})}
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Income Stability: {(clientData.income_stability * 100).toFixed(0)}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={clientData.income_stability}
-                onChange={(e) => setClientData({...clientData, income_stability: parseFloat(e.target.value)})}
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Payment Regularity: {(clientData.payment_regularity * 100).toFixed(0)}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={clientData.payment_regularity}
-                onChange={(e) => setClientData({...clientData, payment_regularity: parseFloat(e.target.value)})}
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Monthly Income (TND)
-              </label>
-              <input
-                type="number"
-                value={clientData.monthly_income}
-                onChange={(e) => setClientData({...clientData, monthly_income: parseFloat(e.target.value)})}
-                className="w-full bg-space-dark border border-space-light rounded-lg px-4 py-2"
-              />
-            </div>
+          <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+            {applications.length > 0 ? (
+              applications.map((app) => (
+                <button
+                  key={app.id}
+                  onClick={() => setSelectedClientId(app.client_id)}
+                  className={`w-full p-4 rounded-lg text-left transition-all border ${
+                    selectedClientId === app.client_id
+                      ? 'bg-accent-cyan/30 border-accent-cyan'
+                      : 'bg-space-dark/50 border-space-light hover:border-accent-cyan'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-accent-cyan">{app.client_id}</span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                      app.status === 'approved' ? 'bg-green-500/20 text-green-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {app.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-400">
+                    <div>
+                      <p className="text-xs">Timestamp</p>
+                      <p className="font-semibold">{app.timestamp || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs">Risk Score</p>
+                      <p className="font-semibold">{(app.risk_score || 0).toFixed(3)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs">Debt Ratio</p>
+                      <p className="font-semibold">{((app.debt_ratio || 0) * 100).toFixed(0)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs">Date</p>
+                      <p className="font-semibold text-xs">{app.date ? new Date(app.date).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <p>No applications found</p>
+              </div>
+            )}
           </div>
           
           <button
             onClick={handleSearch}
-            disabled={isLoading}
-            className="btn-primary w-full mt-6"
+            disabled={isLoading || !selectedClientId}
+            className="btn-primary w-full"
           >
             {isLoading ? 'Searching...' : 'Search Similar Clients'}
           </button>
@@ -204,31 +204,40 @@ export default function Dashboard() {
         {searchResults && searchResults.similar_clients.length > 0 && (
           <div className="glass-card mb-8">
             <h2 className="text-2xl font-bold mb-4">Galaxy View - Vector Space</h2>
+            <p className="text-gray-400 text-sm mb-4">Click on any node to view client details</p>
             <div style={{ height: '600px' }}>
               <GalaxyView
                 clients={searchResults.similar_clients}
-                onSelectClient={(client) => console.log('Selected:', client)}
-                selectedClientId={null}
+                onSelectClient={(client) => setSelectedSimilarClientId(client.client_id)}
+                selectedClientId={selectedSimilarClientId}
               />
             </div>
+            {selectedSimilarClientId && (
+              <div className="mt-4 p-3 bg-accent-cyan/20 border border-accent-cyan/50 rounded-lg">
+                <p className="text-sm text-gray-300">Viewing Similar Client: <span className="font-bold text-accent-cyan">{selectedSimilarClientId}</span></p>
+              </div>
+            )}
           </div>
         )}
         {/* Temporal Evolution */}
         {searchResults && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Select Client for Temporal Analysis</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {searchResults.similar_clients.slice(0, 8).map((client, i) => (
+            <h2 className="text-2xl font-bold mb-4">Top 10 Most Similar Clients</h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              {searchResults.similar_clients.slice(0, 10).map((client, i) => (
                 <button
                   key={i}
-                  onClick={() => setSelectedClientId(client.client_id)}
-                  className={`p-3 rounded-lg text-sm transition-all ${
-                    selectedClientId === client.client_id
+                  onClick={() => setSelectedSimilarClientId(client.client_id)}
+                  className={`p-3 rounded-lg text-sm transition-all relative ${
+                    selectedSimilarClientId === client.client_id
                       ? 'bg-accent-cyan text-white'
-                      : 'bg-space-dark hover:bg-space-light text-gray-300'
+                      : 'bg-gradient-to-br from-space-dark to-space-light hover:from-accent-cyan/20 hover:to-accent-purple/20 text-gray-300 border border-accent-cyan/30'
                   }`}
                 >
-                  {client.client_id}
+                  <span className="absolute top-1 right-1 bg-gradient-to-r from-accent-cyan to-accent-purple text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    #{i + 1}
+                  </span>
+                  <div className="mt-3">{client.client_id}</div>
                   <div className={`text-xs mt-1 ${
                     client.outcome === 'repaid' ? 'text-risk-safe' : 'text-risk-critical'
                   }`}>
@@ -238,7 +247,7 @@ export default function Dashboard() {
               ))}
             </div>
             
-            <TemporalEvolution clientId={selectedClientId} />
+            <TemporalEvolution clientId={selectedSimilarClientId} />
           </div>
         )}
         {/* Trust Rings Network */}
@@ -250,15 +259,29 @@ export default function Dashboard() {
         )}
 
         {/* Counterfactual Engine */}
-        {searchResults && (
+        {searchResults && selectedClientId && (
           <div className="mb-8">
-            <CounterfactualEngine clientData={clientData} />
+            <CounterfactualEngine clientData={{
+              archetype: 'market_vendor',
+              debt_ratio: applications.find(app => app.client_id === selectedClientId)?.debt_ratio || 0.45,
+              years_active: 15,
+              income_stability: applications.find(app => app.client_id === selectedClientId)?.income_stability || 0.85,
+              payment_regularity: applications.find(app => app.client_id === selectedClientId)?.payment_regularity || 0.88,
+              monthly_income: 2500
+            }} />
           </div>
         )}
         {/* Fraud Detection */}
-        {searchResults && (
+        {searchResults && selectedClientId && (
           <div className="mb-8">
-            <FraudAlert clientData={clientData} />
+            <FraudAlert clientData={{
+              archetype: 'market_vendor',
+              debt_ratio: applications.find(app => app.client_id === selectedClientId)?.debt_ratio || 0.45,
+              years_active: 15,
+              income_stability: applications.find(app => app.client_id === selectedClientId)?.income_stability || 0.85,
+              payment_regularity: applications.find(app => app.client_id === selectedClientId)?.payment_regularity || 0.88,
+              monthly_income: 2500
+            }} />
           </div>
         )}
         
@@ -283,12 +306,12 @@ export default function Dashboard() {
                 </div>
                 {/* Oracle Explanation */}
                 {searchResults.oracle_explanation && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 rounded-lg border border-accent-cyan/30">
+                  <div className="mt-6 p-4 bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 rounded-lg border border-accent-cyan/30 col-span-1 md:col-span-3">
                     <div className="flex items-start gap-3">
-                      <div className="text-2xl">✨</div>
-                      <div>
+                      <div className="text-2xl flex-shrink-0">✨</div>
+                      <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-accent-cyan mb-1">Credit Oracle Insight</h4>
-                        <p className="text-gray-300 leading-relaxed">
+                        <p className="text-gray-300 leading-relaxed break-words whitespace-pre-wrap">
                           {searchResults.oracle_explanation}
                         </p>
                       </div>
@@ -327,10 +350,15 @@ export default function Dashboard() {
                 {searchResults.similar_clients.slice(0, 10).map((client, i) => (
                   <div
                     key={i}
-                    className="bg-space-dark p-4 rounded-lg border border-space-light hover:border-accent-cyan transition-colors"
+                    className="bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 p-4 rounded-lg border border-accent-cyan/40 hover:border-accent-cyan transition-colors"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">{client.client_id}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="bg-gradient-to-r from-accent-cyan to-accent-purple text-white font-bold px-2 py-1 rounded text-xs">
+                          TOP #{i + 1}
+                        </span>
+                        <span className="font-semibold">{client.client_id}</span>
+                      </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                         client.outcome === 'repaid' 
                           ? 'bg-risk-safe/20 text-risk-safe'

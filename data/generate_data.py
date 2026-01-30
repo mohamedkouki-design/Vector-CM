@@ -624,7 +624,7 @@ class UltimateDataGenerator:
         
         # 1200 formal approved (60%)
         print("  [1/3] Generating 1200 formal sector clients...")
-        for i in range(1200):
+        for i in range(200):
             client = self.generate_client(f'CLIENT_{i:04d}', 'formal_approved')
             clients.append(client)
             if (i + 1) % 200 == 0:
@@ -632,19 +632,19 @@ class UltimateDataGenerator:
         
         # 600 informal approved (30%)
         print("\n  [2/3] Generating 600 informal sector clients...")
-        for i in range(1200, 1800):
+        for i in range(200, 300):
             client = self.generate_client(f'CLIENT_{i:04d}', 'informal_approved')
             clients.append(client)
-            if (i + 1 - 1200) % 100 == 0:
-                print(f"        Generated {i + 1 - 1200}/600 informal clients...")
+            if (i + 1 - 200) % 100 == 0:
+                print(f"        Generated {i + 1 - 200}/600 informal clients...")
         
         # 200 rejected (10%)
         print("\n  [3/3] Generating 200 rejected applications...")
-        for i in range(1800, 2000):
+        for i in range(300, 320):
             client = self.generate_client(f'CLIENT_{i:04d}', 'rejected')
             clients.append(client)
-            if (i + 1 - 1800) % 50 == 0:
-                print(f"        Generated {i + 1 - 1800}/200 rejected clients...")
+            if (i + 1 - 300) % 50 == 0:
+                print(f"        Generated {i + 1 - 300}/200 rejected clients...")
         
         # Shuffle for realism
         random.shuffle(clients)

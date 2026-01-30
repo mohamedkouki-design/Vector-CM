@@ -307,6 +307,65 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
 
 
+@router.get("/applications/status/{client_id}")
+async def check_application_status(client_id: str):
+    """Check the status of an application by client_id from credit_history_memory."""
+    try:
+        # Scroll through credit_history_memory to find the client
+        offset = 0
+        batch_size = 1000
+        max_iterations = 100
+        iterations = 0
+
+        while iterations < max_iterations:
+            iterations += 1
+            try:
+                batch, next_offset = client.scroll(
+                    collection_name="credit_history_memory",
+                    limit=batch_size,
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=False
+                )
+            except Exception as e:
+                logger.error(f"Failed to scroll credit_history_memory: {e}")
+                break
+
+            if not batch:
+                break
+
+            for point in batch:
+                try:
+                    payload = getattr(point, 'payload', {})
+                    if not payload:
+                        continue
+                    
+                    cid = payload.get('client_id')
+                    if cid == client_id:
+                        # Found the client, return their status
+                        return {
+                            'client_id': client_id,
+                            'status': payload.get('outcome') or payload.get('status') or 'pending',
+                            'outcome': payload.get('outcome') or 'pending',
+                            'rejection_reason': payload.get('actual_outcome') if payload.get('outcome') == 'rejected' else None
+                        }
+                except Exception:
+                    continue
+
+            if next_offset == offset or len(batch) < batch_size:
+                break
+
+            offset = next_offset
+
+        # Client not found
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to check application status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/applications", response_model=ApplicationListResponse)
 async def get_applications(client_id: str = None, limit: int = 50):
     """Fetch recent applications from `credit_history_memory` where payload.outcome == 'pending'."""

@@ -127,7 +127,7 @@ Pattern type: {fraud_type.replace('_', ' ')}
 Similar fraud cases: {len(similar_frauds)}
 Key indicators: {indicators}
 
-Generate a short professional alert that:
+Generate a short 2 phrases professional alert that:
 - Explains the concern clearly
 - Mentions red flags
 - Recommends verification steps

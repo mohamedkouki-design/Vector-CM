@@ -29,12 +29,12 @@ export default function Dashboard() {
         return null;
       }
       return searchSimilar({
-        archetype: 'market_vendor',
+        archetype: appToSearch.archetype || 'market_vendor',
         debt_ratio: appToSearch.debt_ratio || 0.45,
-        years_active: 15,
+        years_active: appToSearch.years_active || 15,
         income_stability: appToSearch.income_stability || 0.85,
         payment_regularity: appToSearch.payment_regularity || 0.88,
-        monthly_income: 2500
+        monthly_income: appToSearch.monthly_income || 2500
       }, 50);
     },
     enabled: searchTriggered && !!selectedClientId,
@@ -75,48 +75,50 @@ export default function Dashboard() {
   }, []);
   
   return (
-    <div className="min-h-screen p-8 animate-fade-in">
-      <Link to="/" className="btn-ghost mb-8 inline-flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Home
-      </Link>
-      
-      {/* Error message if search failed */}
-      {searchError && (
-        <div className="mb-8 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
-          <p className="text-red-300">Search error: {searchError.message}</p>
-        </div>
-      )}
-      
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-8 animate-fade-in">
       <div className="max-w-7xl mx-auto">
+        <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-blue-300 transition-colors mb-8 font-medium">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </Link>
         
-        {/* Enhanced Header with Gradient */}
-        <div className="mb-8 animate-slide-down">
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-accent-cyan via-accent-purple to-accent-pink bg-clip-text text-transparent">
-            Admin Command Center
+        {/* Error message if search failed */}
+        {searchError && (
+          <div className="mb-8 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <p className="text-red-300">Search error: {searchError.message}</p>
+          </div>
+        )}
+        
+        {/* Professional Header */}
+        <div className="mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/30 mb-6">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+            <span className="text-sm font-semibold text-blue-300">Risk Management</span>
+          </div>
+          <h1 className="text-5xl font-bold text-white mb-2">
+            Credit Command Center
           </h1>
-          <p className="text-gray-400 text-lg">
-            Self-Evolving Multimodal Credit Intelligence
+          <p className="text-slate-400 text-lg">
+            Vector-powered credit intelligence and risk analysis
           </p>
         </div>
         
-        {/* Stats Cards with Staggered Animation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: '👥', label: 'Total Clients', value: stats?.total_clients },
-            { icon: '📊', label: 'Vector Size', value: stats?.vector_size },
-            { icon: '🔍', label: 'Distance Metric', value: stats?.distance_metric }
+            { icon: '👥', label: 'Total Clients', value: stats?.total_clients, color: 'blue' },
+            { icon: '📊', label: 'Vector Dimension', value: stats?.vector_size, color: 'blue' },
+            { icon: '🔍', label: 'Distance Metric', value: stats?.distance_metric, color: 'slate' }
           ].map((stat, i) => (
             <div 
               key={i}
-              className="stat-card animate-in"
-              style={{ animationDelay: `${i * 100}ms` }}
+              className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-lg p-6 hover:border-blue-400/30 transition-all"
             >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{stat.icon}</span>
-                <h3 className="font-semibold text-gray-300">{stat.label}</h3>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">{stat.label}</span>
+                <span className="text-3xl">{stat.icon}</span>
               </div>
-              <p className="text-3xl font-bold neon-text">
+              <p className="text-3xl font-bold text-white">
                 {stat.value || '---'}
               </p>
             </div>
@@ -124,8 +126,11 @@ export default function Dashboard() {
         </div>
         
         {/* Applications List */}
-        <div className="glass-card mb-8">
-          <h2 className="text-2xl font-bold mb-6">Applications Board</h2>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2">Recent Applications</h2>
+            <p className="text-slate-400">Select an applicant to view detailed analysis</p>
+          </div>
           
           <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
             {applications.length > 0 ? (
@@ -135,13 +140,13 @@ export default function Dashboard() {
                   onClick={() => setSelectedClientId(app.client_id)}
                   className={`w-full p-4 rounded-lg text-left transition-all border ${
                     selectedClientId === app.client_id
-                      ? 'bg-accent-cyan/30 border-accent-cyan'
-                      : 'bg-space-dark/50 border-space-light hover:border-accent-cyan'
+                      ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/10'
+                      : 'bg-slate-700/30 border-slate-600/50 hover:border-blue-400/30'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-accent-cyan">{app.client_id}</span>
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold text-blue-300">{app.client_id}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                       app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
                       app.status === 'approved' ? 'bg-green-500/20 text-green-300' :
                       'bg-red-500/20 text-red-300'
@@ -149,28 +154,28 @@ export default function Dashboard() {
                       {app.status.toUpperCase()}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-400">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-slate-300">
                     <div>
-                      <p className="text-xs">Timestamp</p>
-                      <p className="font-semibold">{app.timestamp || 'N/A'}</p>
+                      <p className="text-xs text-slate-400 mb-1">Timestamp</p>
+                      <p className="font-semibold text-white">{app.timestamp || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-xs">Risk Score</p>
-                      <p className="font-semibold">{(app.risk_score || 0).toFixed(3)}</p>
+                      <p className="text-xs text-slate-400 mb-1">Risk Score</p>
+                      <p className="font-semibold text-white">{(app.risk_score || 0).toFixed(3)}</p>
                     </div>
                     <div>
-                      <p className="text-xs">Debt Ratio</p>
-                      <p className="font-semibold">{((app.debt_ratio || 0) * 100).toFixed(0)}%</p>
+                      <p className="text-xs text-slate-400 mb-1">Debt Ratio</p>
+                      <p className="font-semibold text-white">{((app.debt_ratio || 0) * 100).toFixed(0)}%</p>
                     </div>
                     <div>
-                      <p className="text-xs">Date</p>
-                      <p className="font-semibold text-xs">{app.date ? new Date(app.date).toLocaleDateString() : 'N/A'}</p>
+                      <p className="text-xs text-slate-400 mb-1">Date</p>
+                      <p className="font-semibold text-white text-xs">{app.date ? new Date(app.date).toLocaleDateString() : 'N/A'}</p>
                     </div>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-slate-400">
                 <p>No applications found</p>
               </div>
             )}
@@ -179,32 +184,37 @@ export default function Dashboard() {
           <button
             onClick={handleSearch}
             disabled={isLoading || !selectedClientId}
-            className="btn-primary w-full"
+            className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all"
           >
-            {isLoading ? 'Searching...' : 'Search Similar Clients'}
+            {isLoading ? 'Analyzing...' : 'Analyze Similar Clients'}
           </button>
         </div>
         
         {/* Loading State */}
         {isLoading && (
-          <div className="glass-card mb-8 animate-pulse-glow">
-            <div className="flex items-center justify-center gap-3 py-8">
-              <div className="w-4 h-4 bg-accent-cyan rounded-full animate-bounce" 
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 text-center mb-8">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" 
                    style={{ animationDelay: '0ms' }} />
-              <div className="w-4 h-4 bg-accent-purple rounded-full animate-bounce" 
+              <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" 
                    style={{ animationDelay: '150ms' }} />
-              <div className="w-4 h-4 bg-accent-pink rounded-full animate-bounce" 
+              <div className="w-3 h-3 bg-blue-300 rounded-full animate-bounce" 
                    style={{ animationDelay: '300ms' }} />
-              <span className="ml-2 text-gray-400">Searching vector space...</span>
+              <span className="ml-2 text-slate-300 font-medium">Analyzing vector space...</span>
             </div>
           </div>
         )}
         
         {/* Galaxy View */}
         {searchResults && searchResults.similar_clients.length > 0 && (
-          <div className="glass-card mb-8">
-            <h2 className="text-2xl font-bold mb-4">Galaxy View - Vector Space</h2>
-            <p className="text-gray-400 text-sm mb-4">Click on any node to view client details</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+                <h2 className="text-2xl font-bold text-white">Galaxy View - Vector Space</h2>
+              </div>
+              <p className="text-slate-400 text-sm">Click on any node to view client details</p>
+            </div>
             <div style={{ height: '600px' }}>
               <GalaxyView
                 clients={searchResults.similar_clients}
@@ -213,8 +223,8 @@ export default function Dashboard() {
               />
             </div>
             {selectedSimilarClientId && (
-              <div className="mt-4 p-3 bg-accent-cyan/20 border border-accent-cyan/50 rounded-lg">
-                <p className="text-sm text-gray-300">Viewing Similar Client: <span className="font-bold text-accent-cyan">{selectedSimilarClientId}</span></p>
+              <div className="mt-4 p-4 bg-blue-600/10 border border-blue-400/30 rounded-lg">
+                <p className="text-sm text-slate-300">Viewing Similar Client: <span className="font-bold text-blue-300">{selectedSimilarClientId}</span></p>
               </div>
             )}
           </div>
@@ -222,24 +232,24 @@ export default function Dashboard() {
         {/* Temporal Evolution */}
         {searchResults && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Top 10 Most Similar Clients</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Top 10 Most Similar Clients</h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
               {searchResults.similar_clients.slice(0, 10).map((client, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedSimilarClientId(client.client_id)}
-                  className={`p-3 rounded-lg text-sm transition-all relative ${
+                  className={`p-4 rounded-lg text-sm transition-all relative border ${
                     selectedSimilarClientId === client.client_id
-                      ? 'bg-accent-cyan text-white'
-                      : 'bg-gradient-to-br from-space-dark to-space-light hover:from-accent-cyan/20 hover:to-accent-purple/20 text-gray-300 border border-accent-cyan/30'
+                      ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20 text-white'
+                      : 'bg-slate-700/40 border-slate-600/50 hover:border-blue-400/50 text-slate-300'
                   }`}
                 >
-                  <span className="absolute top-1 right-1 bg-gradient-to-r from-accent-cyan to-accent-purple text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="absolute top-2 right-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                     #{i + 1}
                   </span>
-                  <div className="mt-3">{client.client_id}</div>
-                  <div className={`text-xs mt-1 ${
-                    client.outcome === 'repaid' ? 'text-risk-safe' : 'text-risk-critical'
+                  <div className="mt-4 font-semibold text-white">{client.client_id}</div>
+                  <div className={`text-xs mt-2 font-medium ${
+                    client.outcome === 'repaid' ? 'text-green-400' : 'text-red-400'
                   }`}>
                     {client.outcome}
                   </div>
@@ -252,35 +262,59 @@ export default function Dashboard() {
         )}
         {/* Trust Rings Network */}
         {searchResults && (
-          <TrustRings 
-            clientId={selectedClientId || searchResults.similar_clients[0]?.client_id}
-            similarClients={searchResults.similar_clients}
-          />
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse"></div>
+                <h2 className="text-2xl font-bold text-white">Trust Network Analysis</h2>
+              </div>
+              <p className="text-slate-400 text-sm">Client relationships and trust connections</p>
+            </div>
+            <TrustRings 
+              clientId={selectedClientId || searchResults.similar_clients[0]?.client_id}
+              similarClients={searchResults.similar_clients}
+              queryClientData={applications.find(app => app.client_id === selectedClientId)}
+            />
+          </div>
         )}
 
         {/* Counterfactual Engine */}
         {searchResults && selectedClientId && (
-          <div className="mb-8">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></div>
+                <h2 className="text-2xl font-bold text-white">Counterfactual Analysis</h2>
+              </div>
+              <p className="text-slate-400 text-sm">What-if scenarios and decision drivers</p>
+            </div>
             <CounterfactualEngine clientData={{
-              archetype: 'market_vendor',
+              archetype: applications.find(app => app.client_id === selectedClientId)?.archetype || 'market_vendor',
               debt_ratio: applications.find(app => app.client_id === selectedClientId)?.debt_ratio || 0.45,
-              years_active: 15,
+              years_active: applications.find(app => app.client_id === selectedClientId)?.years_active || 15,
               income_stability: applications.find(app => app.client_id === selectedClientId)?.income_stability || 0.85,
               payment_regularity: applications.find(app => app.client_id === selectedClientId)?.payment_regularity || 0.88,
-              monthly_income: 2500
+              monthly_income: applications.find(app => app.client_id === selectedClientId)?.monthly_income || 2500
             }} />
           </div>
         )}
         {/* Fraud Detection */}
         {searchResults && selectedClientId && (
-          <div className="mb-8">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                <h2 className="text-2xl font-bold text-white">Fraud Detection & Risk</h2>
+              </div>
+              <p className="text-slate-400 text-sm">Advanced anomaly and fraud pattern analysis</p>
+            </div>
             <FraudAlert clientData={{
-              archetype: 'market_vendor',
+              archetype: applications.find(app => app.client_id === selectedClientId)?.archetype || 'market_vendor',
               debt_ratio: applications.find(app => app.client_id === selectedClientId)?.debt_ratio || 0.45,
-              years_active: 15,
+              years_active: applications.find(app => app.client_id === selectedClientId)?.years_active || 15,
               income_stability: applications.find(app => app.client_id === selectedClientId)?.income_stability || 0.85,
               payment_regularity: applications.find(app => app.client_id === selectedClientId)?.payment_regularity || 0.88,
-              monthly_income: 2500
+              monthly_income: applications.find(app => app.client_id === selectedClientId)?.monthly_income || 2500
             }} />
           </div>
         )}
@@ -289,101 +323,114 @@ export default function Dashboard() {
         {searchResults && (
           <>
             {/* Risk Assessment */}
-            <div className="glass-card mb-8">
-              <h2 className="text-2xl font-bold mb-4">Risk Assessment</h2>
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8 mb-8">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                  <h2 className="text-2xl font-bold text-white">Risk Assessment</h2>
+                </div>
+                <p className="text-slate-400 text-sm">Comprehensive credit risk evaluation</p>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Risk Level</p>
-                  <p className={`text-3xl font-bold ${
-                    searchResults.risk_level === 'LOW' ? 'text-risk-safe' :
-                    searchResults.risk_level === 'MEDIUM' ? 'text-risk-medium' :
-                    searchResults.risk_level === 'HIGH' ? 'text-risk-high' :
-                    'text-risk-critical'
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-slate-700/40 border border-slate-600/50 rounded-lg p-6">
+                  <p className="text-sm text-slate-400 mb-3">Risk Level</p>
+                  <p className={`text-4xl font-bold ${
+                    searchResults.risk_level === 'LOW' ? 'text-green-400' :
+                    searchResults.risk_level === 'MEDIUM' ? 'text-yellow-400' :
+                    searchResults.risk_level === 'HIGH' ? 'text-orange-400' :
+                    'text-red-400'
                   }`}>
                     {searchResults.risk_level}
                   </p>
                 </div>
-                {/* Oracle Explanation */}
-                {searchResults.oracle_explanation && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 rounded-lg border border-accent-cyan/30 col-span-1 md:col-span-3">
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl flex-shrink-0">✨</div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-accent-cyan mb-1">Credit Oracle Insight</h4>
-                        <p className="text-gray-300 leading-relaxed break-words whitespace-pre-wrap">
-                          {searchResults.oracle_explanation}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Confidence</p>
-                  <p className="text-3xl font-bold">
+                <div className="bg-slate-700/40 border border-slate-600/50 rounded-lg p-6">
+                  <p className="text-sm text-slate-400 mb-3">Confidence Score</p>
+                  <p className="text-4xl font-bold text-blue-400">
                     {(searchResults.confidence * 100).toFixed(0)}%
                   </p>
                 </div>
                 
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Repayment Rate</p>
-                  <p className="text-3xl font-bold">
+                <div className="bg-slate-700/40 border border-slate-600/50 rounded-lg p-6">
+                  <p className="text-sm text-slate-400 mb-3">Repayment Rate</p>
+                  <p className="text-4xl font-bold text-blue-400">
                     {searchResults.repaid_count}/{searchResults.total_count}
                   </p>
                 </div>
               </div>
+
+              {/* Oracle Explanation */}
+              {searchResults.oracle_explanation && (
+                <div className="mb-8 p-6 bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-lg border border-blue-400/30">
+                  <div className="flex items-start gap-4">
+                    <div className="text-3xl flex-shrink-0">✨</div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-blue-300 mb-2 text-lg">Credit Oracle Insight</h4>
+                      <p className="text-slate-300 leading-relaxed break-words whitespace-pre-wrap">
+                        {searchResults.oracle_explanation}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
-              <div className="mt-6 p-4 bg-space-dark rounded-lg">
-                <p className="font-semibold mb-2">Recommendation:</p>
-                <p className="text-gray-300">{searchResults.recommendation}</p>
+              <div className="p-6 bg-slate-700/40 border border-slate-600/50 rounded-lg">
+                <p className="font-semibold text-white mb-3 text-lg">Recommendation:</p>
+                <p className="text-slate-300 leading-relaxed">{searchResults.recommendation}</p>
               </div>
             </div>
             
             {/* Similar Clients */}
-            <div className="glass-card">
-              <h2 className="text-2xl font-bold mb-4">
-                Similar Clients (Top 10)
-              </h2>
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Similar Clients (Top 10)
+                  </h2>
+                </div>
+                <p className="text-slate-400 text-sm">Comparable credit profiles and outcomes</p>
+              </div>
               
               <div className="space-y-3">
                 {searchResults.similar_clients.slice(0, 10).map((client, i) => (
                   <div
                     key={i}
-                    className="bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 p-4 rounded-lg border border-accent-cyan/40 hover:border-accent-cyan transition-colors"
+                    className="bg-slate-700/30 border border-slate-600/50 p-5 rounded-lg hover:border-blue-400/50 transition-all"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <span className="bg-gradient-to-r from-accent-cyan to-accent-purple text-white font-bold px-2 py-1 rounded text-xs">
+                        <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold px-3 py-1 rounded text-xs">
                           TOP #{i + 1}
                         </span>
-                        <span className="font-semibold">{client.client_id}</span>
+                        <span className="font-semibold text-white">{client.client_id}</span>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                         client.outcome === 'repaid' 
-                          ? 'bg-risk-safe/20 text-risk-safe'
-                          : 'bg-risk-critical/20 text-risk-critical'
+                          ? 'bg-green-500/20 text-green-300'
+                          : 'bg-red-500/20 text-red-300'
                       }`}>
                         {client.outcome ? client.outcome.toUpperCase() : 'UNKNOWN'}
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-400">Similarity</p>
-                        <p className="font-semibold">{(client.similarity * 100).toFixed(1)}%</p>
+                        <p className="text-slate-400 text-xs mb-1">Similarity</p>
+                        <p className="font-semibold text-blue-300">{(client.similarity * 100).toFixed(1)}%</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Loan Source</p>
-                        <p className="font-semibold text-accent-cyan">{client.loan_source}</p>
+                        <p className="text-slate-400 text-xs mb-1">Loan Source</p>
+                        <p className="font-semibold text-slate-300">{client.loan_source}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Debt Ratio</p>
-                        <p className="font-semibold">{(client.debt_ratio * 100).toFixed(0)}%</p>
+                        <p className="text-slate-400 text-xs mb-1">Debt Ratio</p>
+                        <p className="font-semibold text-slate-300">{(client.debt_ratio * 100).toFixed(0)}%</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Experience</p>
-                        <p className="font-semibold">{client.years_active} years</p>
+                        <p className="text-slate-400 text-xs mb-1">Experience</p>
+                        <p className="font-semibold text-slate-300">{client.years_active} years</p>
                       </div>
                     </div>
                   </div>

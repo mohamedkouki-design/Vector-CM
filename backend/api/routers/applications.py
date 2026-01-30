@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 import logging
 import json
+import random
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,6 +31,16 @@ class ApplicationResponse(BaseModel):
 class ApplicationListResponse(BaseModel):
     applications: List[Dict[str, Any]] = []
     total: int = 0
+
+class CreditHistorySubmission(BaseModel):
+    name: str
+    archetype: str
+    years_active: float
+    monthly_income: float
+    debt_ratio: float = 0.45
+    income_stability: float = 0.85
+    payment_regularity: float = 0.88
+    client_id: str = None  # Optional: use existing client_id if provided
 
 
 def document_check_placeholder(documents: List[str]) -> Dict[str, Any]:
@@ -265,4 +276,78 @@ async def submit_application(request: ApplicationSubmission):
         raise
     except Exception as e:
         logger.error(f"Application submission failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+LOCATIONS = ['Tunis', 'Sfax', 'Sousse', 'Gabes', 'Ariana', 'Ben Arous', 'Bizerte', 'Nabeul']
+
+
+@router.post("/applications/add-to-credit-history", response_model=Dict[str, Any])
+async def add_to_credit_history(request: CreditHistorySubmission):
+    """Create a 384-dim vector point in credit_history_memory with pending outcomes and random location."""
+    try:
+        # Use provided client_id or generate a new one
+        client_id = request.client_id if request.client_id else f"CLIENT_{uuid.uuid4().hex[:8].upper()}"
+        
+        # Create embedding from applicant data
+        applicant_data = {
+            'archetype': request.archetype,
+            'debt_ratio': request.debt_ratio,
+            'years_active': request.years_active,
+            'income_stability': request.income_stability,
+            'payment_regularity': request.payment_regularity,
+            'monthly_income': request.monthly_income
+        }
+        
+        vector = create_embedding(applicant_data)
+        vector = np.array(vector)
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector = vector / norm
+        
+        vector_list = vector.tolist() if hasattr(vector, 'tolist') else list(vector)
+        
+        # Ensure 384 dimensions
+        if len(vector_list) != EMBEDDING_SIZE:
+            if len(vector_list) < EMBEDDING_SIZE:
+                vector_list += [0.0] * (EMBEDDING_SIZE - len(vector_list))
+            else:
+                vector_list = vector_list[:EMBEDDING_SIZE]
+        
+        # Create payload with pending outcomes and random location
+        payload = {
+            'client_id': client_id,
+            'name': request.name,
+            'archetype': request.archetype,
+            'employment_type': 'informal',  # Default based on payment pattern
+            'years_active': float(request.years_active),
+            'monthly_income': float(request.monthly_income),
+            'debt_ratio': float(request.debt_ratio),
+            'income_stability': float(request.income_stability),
+            'payment_regularity': float(request.payment_regularity),
+            'loan_source': 'community_lending',
+            'outcome': 'pending',
+            'actual_outcome': 'pending',
+            'location': random.choice(LOCATIONS),
+            'social_network': '[]'  # Empty social network for new applicant
+        }
+        
+        # Use timestamp-based id for uniqueness
+        point_id = int(datetime.utcnow().timestamp() * 1000000) % (2**31 - 1)
+        point = PointStruct(id=point_id, vector=vector_list, payload=payload)
+        
+        # Upsert into credit_history_memory
+        client.upsert(collection_name="credit_history_memory", points=[point])
+        logger.info(f"✅ Created credit history point id={point_id} client_id={client_id} location={payload['location']}")
+        
+        return {
+            'client_id': client_id,
+            'point_id': point_id,
+            'location': payload['location'],
+            'status': 'pending',
+            'message': 'Successfully created credit history point'
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to create credit history point: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -98,10 +98,10 @@ export default function TemporalEvolution({ clientId }) {
   
   if (!clientId) {
     return (
-      <div className="glass-card">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
         <div className="text-center py-12">
-          <Clock className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-400">Select a client to view temporal evolution</p>
+          <Clock className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+          <p className="text-slate-400">Select a client to view temporal evolution</p>
         </div>
       </div>
     );
@@ -109,10 +109,10 @@ export default function TemporalEvolution({ clientId }) {
   
   if (loading) {
     return (
-      <div className="glass-card">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
         <div className="text-center py-12">
-          <div className="w-12 h-12 border-4 border-accent-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading temporal data...</p>
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400">Loading temporal data...</p>
         </div>
       </div>
     );
@@ -135,15 +135,15 @@ export default function TemporalEvolution({ clientId }) {
   
   if (riskChange < -0.1) {
     trendIcon = <TrendingDown className="w-5 h-5" />;
-    trendColor = 'text-risk-safe';
+    trendColor = 'text-green-400';
     trendText = 'Improving';
   } else if (riskChange > 0.1) {
     trendIcon = <TrendingUp className="w-5 h-5" />;
-    trendColor = 'text-risk-critical';
+    trendColor = 'text-red-400';
     trendText = 'Declining';
   } else {
     trendIcon = <Minus className="w-5 h-5" />;
-    trendColor = 'text-risk-medium';
+    trendColor = 'text-yellow-400';
     trendText = 'Stable';
   }
   
@@ -169,15 +169,15 @@ export default function TemporalEvolution({ clientId }) {
   ];
   
   return (
-    <div className="glass-card animate-slide-up">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-2xl font-bold flex items-center gap-3">
-            <Clock className="w-8 h-8 text-accent-cyan" />
+          <h3 className="text-2xl font-bold flex items-center gap-3 text-white">
+            <Clock className="w-8 h-8 text-blue-400" />
             Temporal Evolution
           </h3>
-          <p className="text-gray-400 mt-1">6-month risk trajectory analysis</p>
+          <p className="text-slate-400 mt-2">6-month risk trajectory analysis</p>
         </div>
         
         <div className={`flex items-center gap-2 ${trendColor} font-semibold`}>
@@ -196,19 +196,19 @@ export default function TemporalEvolution({ clientId }) {
           
           // Status color mapping
           const statusStyles = {
-            'pending': 'border-gray-500 bg-space-dark',
-            'good': 'border-risk-safe bg-risk-safe/10',
-            'improving': 'border-accent-cyan bg-accent-cyan/10',
-            'warning': 'border-risk-medium bg-risk-medium/10',
-            'default': 'border-risk-critical bg-risk-critical/10'
+            'pending': 'border-slate-600/50 bg-slate-700/40',
+            'good': 'border-green-400/50 bg-green-600/10',
+            'improving': 'border-blue-400/50 bg-blue-600/10',
+            'warning': 'border-yellow-400/50 bg-yellow-600/10',
+            'default': 'border-red-400/50 bg-red-600/10'
           };
           
           const statusTextColors = {
-            'pending': 'text-gray-400',
-            'good': 'text-risk-safe',
-            'improving': 'text-accent-cyan',
-            'warning': 'text-risk-medium',
-            'default': 'text-risk-critical'
+            'pending': 'text-slate-400',
+            'good': 'text-green-400',
+            'improving': 'text-blue-400',
+            'warning': 'text-yellow-400',
+            'default': 'text-red-400'
           };
           
           return (
@@ -216,9 +216,9 @@ export default function TemporalEvolution({ clientId }) {
             key={i}
             className={`p-4 rounded-lg border-2 ${statusStyles[snapshot.status] || statusStyles['pending']}`}
           >
-            <div className="text-sm text-gray-400 mb-1">{timestampLabel}</div>
-            <div className="text-xs text-gray-500 mb-2">{snapshot.date}</div>
-            <div className="text-2xl font-bold mb-1">
+            <div className="text-sm text-slate-400 mb-1 font-medium">{timestampLabel}</div>
+            <div className="text-xs text-slate-500 mb-2">{snapshot.date}</div>
+            <div className="text-3xl font-bold mb-2 text-white">
               {(snapshot.risk_score * 100).toFixed(0)}%
             </div>
             <div className={`text-xs font-semibold uppercase ${statusTextColors[snapshot.status] || statusTextColors['pending']}`}>
@@ -230,15 +230,15 @@ export default function TemporalEvolution({ clientId }) {
       </div>
       
       {/* Metric Selector */}
-      <div className="flex gap-2 mb-6 overflow-x-auto">
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
         {metrics.map(metric => (
           <button
             key={metric.key}
             onClick={() => setSelectedMetric(metric.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${
               selectedMetric === metric.key
-                ? 'bg-accent-cyan text-white'
-                : 'bg-space-dark text-gray-400 hover:bg-space-light'
+                ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
+                : 'bg-slate-700/40 text-slate-300 border-slate-600/50 hover:border-blue-400/50'
             }`}
           >
             {metric.label}
@@ -268,21 +268,21 @@ export default function TemporalEvolution({ clientId }) {
                 <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a3562" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis 
               dataKey="name" 
-              stroke="#9ca3af"
+              stroke="#94a3b8"
               style={{ fontSize: '12px' }}
             />
             <YAxis 
-              stroke="#9ca3af"
+              stroke="#94a3b8"
               style={{ fontSize: '12px' }}
               domain={[0, 100]}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#1e2749',
-                border: '1px solid #2a3562',
+                backgroundColor: '#1e293b',
+                border: '1px solid #475569',
                 borderRadius: '8px',
                 color: '#fff'
               }}
@@ -300,21 +300,21 @@ export default function TemporalEvolution({ clientId }) {
       </div>
       
       {/* AI Narrative */}
-      <div className="bg-gradient-to-r from-accent-cyan/10 to-accent-purple/10 border border-accent-cyan/30 rounded-lg p-6">
-        <div className="flex items-start gap-3">
-          <div className="text-2xl">🔮</div>
+      <div className="bg-gradient-to-r from-blue-600/10 to-blue-500/10 border border-blue-400/30 rounded-lg p-6 mb-6">
+        <div className="flex items-start gap-4">
+          <div className="text-3xl flex-shrink-0">🔮</div>
           <div>
-            <h4 className="font-semibold text-accent-cyan mb-2">Temporal Analysis</h4>
-            <p className="text-gray-300 leading-relaxed">{narrative}</p>
+            <h4 className="font-semibold text-blue-300 mb-2 text-lg">Temporal Analysis</h4>
+            <p className="text-slate-300 leading-relaxed">{narrative}</p>
           </div>
         </div>
       </div>
       
       {/* Final Outcome */}
-      <div className={`mt-6 p-4 rounded-lg text-center font-semibold ${
+      <div className={`p-4 rounded-lg text-center font-semibold border ${
         final_outcome === 'repaid' 
-          ? 'bg-risk-safe/20 text-risk-safe border border-risk-safe/30'
-          : 'bg-risk-critical/20 text-risk-critical border border-risk-critical/30'
+          ? 'bg-green-600/10 text-green-300 border-green-400/30'
+          : 'bg-red-600/10 text-red-300 border-red-400/30'
       }`}>
         Final Outcome: {final_outcome.toUpperCase()}
       </div>

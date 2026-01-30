@@ -124,7 +124,7 @@ async def analyze_counterfactual(request: CounterfactualRequest):
         )
         
         # Calculate original confidence
-        original_repaid = sum(1 for r in original_results if r.payload.get('outcome') == 'repaid')
+        original_repaid = sum(1 for r in original_results if r.payload.get('actual_outcome') == 'repaid')
         original_confidence = original_repaid / len(original_results) if original_results else 0
         original_risk = calculate_risk_level(original_confidence)
         
@@ -142,7 +142,7 @@ async def analyze_counterfactual(request: CounterfactualRequest):
         )
         
         # Calculate modified confidence
-        modified_repaid = sum(1 for r in modified_results if r.payload.get('outcome') == 'repaid')
+        modified_repaid = sum(1 for r in modified_results if r.payload.get('actual_outcome') == 'repaid')
         modified_confidence = modified_repaid / len(modified_results) if modified_results else 0
         modified_risk = calculate_risk_level(modified_confidence)
         

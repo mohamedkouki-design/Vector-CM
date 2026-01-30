@@ -8,7 +8,7 @@ class SearchRequest(BaseModel):
 class SimilarClient(BaseModel):
     client_id: str
     similarity: float
-    outcome: str
+    outcome: Optional[str] = None
     loan_source: str
     debt_ratio: float
     years_active: float

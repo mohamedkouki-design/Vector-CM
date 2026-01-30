@@ -199,7 +199,6 @@ class CreditMemory:
         
         points = []
         fraud_points = []
-        
         for i in range(num_samples):
             client_profile = generator.generate_client_profile(i)
             vector = self.embedder.create_simple_vector(client_profile)

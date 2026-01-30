@@ -364,7 +364,7 @@ export default function Dashboard() {
                           ? 'bg-risk-safe/20 text-risk-safe'
                           : 'bg-risk-critical/20 text-risk-critical'
                       }`}>
-                        {client.outcome.toUpperCase()}
+                        {client.outcome ? client.outcome.toUpperCase() : 'UNKNOWN'}
                       </span>
                     </div>
                     

@@ -1,8 +1,8 @@
-# 🧠 Vector Credit Memory (Vector CM)
+# 🏦 Vector Credit Memory (Vector CM)
 
 **Self-Evolving Multimodal Credit Intelligence for MENA Informal Economy**
 
-## Team Members
+## Project Contributors
 - **Mohamed Kouki** | **Ayoub Boudhrioua** | **Oussema Chihi** | **Aziz Ben Daali**
 
 ---
@@ -25,10 +25,10 @@ Uses **Qdrant vector database** with semantic embeddings to find "financial twin
 
 ## 🌐 Platform Link
 
-**Deployment Status**: Available for Hackathon Judges
+**Deployment Status**:
 - **Frontend**: React + Vite (http://localhost:5173)
 - **Backend API**: FastAPI (http://localhost:8000)
-- **API Docs**: http://localhost:8000/docs (Swagger UI)
+- **API Docs**: http://localhost:8000/docs
 - **Vector DB**: Qdrant Dashboard (http://localhost:6333/dashboard)
 
 
@@ -342,7 +342,7 @@ npm run dev
 
 ---
 
-## 🎯 Testing the Application
+## Testing the Application
 
 ### Verify Installation
 ```bash
@@ -419,7 +419,7 @@ Response:
 **Frontend (Admin Dashboard)**
 1. Access Admin Command Center
 2. Select "Counterfactual Engine"
-3. Modify parameters: "What if debt ratio drops to 30%?"
+3. Modify parameters: "What if the debt ratio dropped by 30%?"
 4. See approval likelihood change to 92%
 
 **API Call**

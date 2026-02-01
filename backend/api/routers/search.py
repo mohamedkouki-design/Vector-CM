@@ -17,39 +17,54 @@ async def search_similar(request: SearchRequest):
     Find similar clients using k-NN search
     """
     try:
-        # Create embedding
-        logger.info(f"Creating embedding for: {request.client_data.get('archetype')}")
+        # Extract client_id from request for filtering
+        request_client_id = request.client_id
+        
+        logger.info(f"Search request for client_id: {request_client_id}")
+        
+        # Get archetype for logging
+        if isinstance(request.client_data, dict):
+            archetype = request.client_data.get('archetype')
+        else:
+            archetype = getattr(request.client_data, 'archetype', 'unknown')
+        
+        logger.info(f"Creating embedding for: {archetype}")
         vector = create_embedding(request.client_data)
         
-        # Search Qdrant
+        # Search Qdrant - request limit + 1 to account for filtering
         results = qdrant.search(
             collection_name="credit_history_memory",
             query_vector=vector.tolist(),
-            limit=request.top_k
+            limit=request.top_k + 1
         )
 
-        logger.info(f"Found {len(results)} similar clients (including request client if present)")
+        logger.info(f"Found {len(results)} similar clients from Qdrant")
 
-        # Filter out the requesting client_id if present in the input payload
-        request_client_id = request.client_data.get('client_id') if isinstance(request.client_data, dict) else None
+        # Filter out the requesting client_id if present in the results
         filtered_results = []
         for r in results:
-            try:
-                payload = getattr(r, 'payload', {}) or {}
-                if request_client_id and payload.get('client_id') == request_client_id:
+            payload = getattr(r, 'payload', {}) or {}
+            result_client_id = payload.get('client_id')
+            
+            logger.info(f"Checking result - client_id: {result_client_id} (type: {type(result_client_id).__name__}), request_client_id: {request_client_id} (type: {type(request_client_id).__name__})")
+            
+            # Skip if this is the requesting client (handle both string and int comparison)
+            if request_client_id is not None:
+                # Convert to string for comparison to handle int/str mismatches
+                if str(result_client_id) == str(request_client_id):
+                    logger.info(f"FILTERING OUT: {result_client_id} matches {request_client_id}")
                     continue
-            except Exception:
-                pass
+            
             filtered_results.append(r)
 
-        logger.info(f"Using {len(filtered_results)} similar clients after filtering request client")
+        logger.info(f"After filtering: {len(filtered_results)} clients remaining")
 
         # Parse results
         similar_clients = []
         repaid_count = 0
 
         for result in filtered_results:
-            outcome = result.payload.get('actual_outcome', 'unknown')
+            outcome = result.payload.get('actual_outcome', 'REJECTED').lower()
             if outcome == 'repaid':
                 repaid_count += 1
             

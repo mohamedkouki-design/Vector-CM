@@ -9,9 +9,10 @@ const api = axios.create({
   },
 });
 
-export const searchSimilar = async (clientData, topK = 50) => {
+export const searchSimilar = async (clientData, topK = 50, clientId = null) => {
   const response = await api.post('/search/similar', {
     client_data: clientData,
+    client_id: clientId,
     top_k: topK
   });
   return response.data;

@@ -37,7 +37,7 @@ export default function Dashboard() {
         income_stability: appToSearch.income_stability || 0.85,
         payment_regularity: appToSearch.payment_regularity || 0.88,
         monthly_income: appToSearch.monthly_income || 2500
-      }, 50);
+      }, 50, selectedClientId);
     },
     enabled: searchTriggered && !!selectedClientId,
     retry: 1

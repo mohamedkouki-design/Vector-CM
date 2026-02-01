@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pdf2image import convert_from_path
 
 # --- CONFIGURATION ---
-INPUT_FILES = ["Releve_Bancaire.pdf", "Releve_Bancaire1.pdf"]
+INPUT_FILES = ["Releve_Bancaire.pdf"]
 OUTPUT_DIR = "dataset/fakes"
 FONT_PATH = "arial.ttf"  # Ensure this file exists, or use absolute path
 # If you don't have Arial, try "DejaVuSans.ttf" on Linux
@@ -167,4 +167,4 @@ def create_fakes(count=50):
     print(f"Done! Images saved in {OUTPUT_DIR}")
 
 if __name__ == "__main__":
-    create_fakes(1)
+    create_fakes(200)

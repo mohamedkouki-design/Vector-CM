@@ -2,6 +2,9 @@ fastapi
 uvicorn[standard]
 pydantic
 qdrant-client
+faker
+PIL
+pdf2image
 sentence-transformers
 numpy
 pandas

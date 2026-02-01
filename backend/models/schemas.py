@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 
 class SearchRequest(BaseModel):
     client_data: Dict[str, Any]
+    client_id: Optional[str] = None  # Optional: client_id to filter out from results
     top_k: int = 50
 
 class SimilarClient(BaseModel):

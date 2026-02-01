@@ -6,7 +6,7 @@ import axios from 'axios';
 export default function TemporalEvolution({ clientId }) {
   const [evolutionData, setEvolutionData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState('risk_score');
+  const [selectedMetric, setSelectedMetric] = useState('Risk Score');
   
   const fetchTemporalData = async () => {
     setLoading(true);

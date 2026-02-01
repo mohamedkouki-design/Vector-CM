@@ -7,11 +7,11 @@ from qdrant_client.models import Distance, VectorParams, PointStruct
 from transformers import CLIPProcessor, CLIPModel
 
 # Add backend to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from services.qdrant_manager import QdrantManager
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
+from backend.services.qdrant_manager import QdrantManager
 
 # --- CONFIGURATION ---
-FAKE_DIR = "dataset/fakes"
+FAKE_DIR = "backend/doc_check/dataset/fakes"
 COLLECTION_NAME = "document_risk_engine"
 # ---------------------
 

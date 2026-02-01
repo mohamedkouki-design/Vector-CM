@@ -103,6 +103,10 @@ Vector-CM/
 │   │   ├── counterfactual.py            # What-if scenario endpoints
 │   │   ├── search.py                    # Vector similarity search
 │   │   └── ...
+|   ├── doc_check/
+│   │   ├── dataset/fakes                # Generated fakes
+│   │   ├── fake_gen.py
+│   │   └── ...
 │   ├── services/
 │   │   ├── embeddings.py                # Vector generation (Sentence Transformers)
 │   │   ├── qdrant_manager.py            # Qdrant operations (search, create, update)
@@ -135,6 +139,8 @@ Vector-CM/
 ├── data/                                 # Data & Scripts
 │   ├── generate_data.py                 # Synthetic data generator
 │   └── synthetic_*.csv                  # Generated datasets
+├── populate_qdrant.py                   # Populating credit_history_memory , temporal_risk_memory and fraud_patterns collections
+├── ingest_fakes.py                      # Populating document_risk_engine collection
 │
 └── README.md                             # This file
 ```
@@ -169,7 +175,8 @@ Collection Schema:
   "mobile_payment_ratio": 0-1,
   "ledger_quality": 0-1,
   "outcome": "pending|approved|rejected",
-  "rejection_reason": "optional string"
+  "actual_outcome": "optional string",
+  ...
 }
 ```
 
@@ -179,10 +186,13 @@ Stores known fraud behavioral patterns.
 ```python
 Collection Schema:
 {
-  "fraud_type": "identity_fraud|income_falsification|etc",
-  "risk_indicators": [list of flags],
-  "confidence_score": 0-1,
-  "pattern_description": "string"
+"fraud_id":"FRAUD_0000"
+"fraud_type":"shell_company"
+"archetype":"gig_worker"
+"debt_ratio":0.939
+"income_stability":0.261
+"fraud_narrative":"Company registered 2 weeks before loan application…"
+"fraud_indicators":"suspicious_activity"
 }
 ```
 
@@ -208,16 +218,17 @@ client_data = {
     "years_active": 15,
     "income_stability": 0.85,
     "payment_regularity": 0.88,
-    "monthly_income": 2500
+    "monthly_income": 2500,
+    ...
 }
 
 # Step 2: Backend generates embedding (384D)
 embedding = create_embedding(client_data)
 
 # Step 3: Query Qdrant for similar clients
-results = qdrant.search(
+results = qdrant.query_points(
     collection="credit_history_memory",
-    query_vector=embedding,
+    query=embedding,
     limit=50,
     score_threshold=0.70
 )
@@ -246,92 +257,110 @@ approval_probability = approved_count / len(results)
 
 ---
 
-## ⚙️ Setup & Installation
+## 📦 Installation Steps
 
-### Prerequisites
-- **Python 3.8+** 
-- **Node.js 16+** (for frontend)
-- **Qdrant 1.x** (local or cloud)
-- **Git**
-
-### Installation Steps
-
-#### **Step 1: Clone Repository**
+### 1️⃣ Clone Repository
 ```bash
-git clone https://github.com/yourusername/Vector-CM.git
-cd Vector-CM
+git clone https://github.com/mohamedkouki-design/Vector-CM.git
+cd vector-cm
 ```
 
-#### **Step 2: Setup Backend**
+### 2️⃣ Backend Setup
 ```bash
-cd backend
-
 # Create virtual environment
 python -m venv venv
 
-# Activate it
-# Windows: venv\Scripts\activate
-# macOS/Linux: source venv/bin/activate
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
 
 # Install dependencies
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 
-# Create .env file
-cat > .env << EOF
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-QDRANT_API_KEY=your_api_key_here
-GOOGLE_API_KEY=your_google_api_key
-HOST=0.0.0.0
-PORT=8000
-EOF
-
-cd ..
-```
-
-#### **Step 3: Setup Frontend**
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-#### **Step 4: Start Qdrant**
-```bash
-# Using Docker
-docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
-
-# Verify: curl http://localhost:6333/health
-```
-
-#### **Step 5: Initialize Vector Collections**
-```bash
+# Setup environment variables
 cd backend
-python -c "from services.qdrant_manager import QdrantManager; QdrantManager().create_collections()"
-cd ..
+# Create a .env file and add your Google API key:
+# GOOGLE_API_KEY=your-actual-key-here
 ```
 
-#### **Step 6: Start Backend**
+### 3️⃣ Frontend Setup
+```bash
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Setup environment variables
+```
+
+### 4️⃣ Start Qdrant Database
+```bash
+# In a new terminal
+# For Linux:
+docker run -p 6333:6333 -p 6334:6334 \
+    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
+    qdrant/qdrant
+# For Windows:
+docker run -p 6333:6333 -p 6334:6334 `
+    -v ${PWD}/qdrant_storage:/qdrant/storage:Z `
+    qdrant/qdrant
+```
+
+### 5️⃣ Generate Dataset
+```bash
+cd ../data/
+python generate_data.py
+cd ../backend/doc_check/
+python fake_gen.py
+```
+
+### 6️⃣ Populate Qdrant
+```bash
+cd ../..
+python populate_qdrant.py
+python ingest_fakes.py
+```
+
+### 7️⃣ Start Backend
 ```bash
 cd backend
 python main.py
-# 🚀 Uvicorn running on http://localhost:8000
 ```
 
-#### **Step 7: Start Frontend** (new terminal)
+**Should see:** `Uvicorn running on http://0.0.0.0:8000`
+
+### 8️⃣ Start Frontend
 ```bash
+# In new terminal
 cd frontend
 npm run dev
-# ✨ Vite dev server on http://localhost:5173
 ```
+
+**Should see:** `Local: http://localhost:5173`
+
+---
+
+## 🎯 Testing the Application
 
 ### Verify Installation
 ```bash
 # Health checks
 curl http://localhost:8000/health        # Backend
 curl http://localhost:6333/health        # Qdrant
-curl http://localhost:5173               # Frontend (open in browser)
 ```
+### Open in Browser
+
+Navigate to: `http://localhost:5173`
+
+### Test Flow
+
+1. **Landing Page** - Choose Client Portal or Admin Dashboard
+2. **Admin Dashboard** - Test search functionality
+3. **Credit Oracle** - Check AI explanations appear
+4. **Fraud Detection** - Upload test data
+5. **Temporal Evolution** - View client journey over time
 
 
 
@@ -356,21 +385,13 @@ curl http://localhost:5173               # Frontend (open in browser)
 ```bash
 POST http://localhost:8000/api/v1/applications/submit
 {
-  "client_id": "CLIENT_001",
+  "client_id": "CLIENT_0001",
   "archetype": "market_vendor",
   "years_active": 15,
   "debt_ratio": 0.45,
   "payment_regularity": 0.88,
-  "monthly_income": 2500
-}
-
-Response (instant):
-{
-  "status": "approved",
-  "confidence": 0.87,
-  "similar_clients": 47,
-  "success_rate": 0.89,
-  "recommendation": "Strong profile matched with successful vendors"
+  "monthly_income": 2500,
+  ...
 }
 ```
 
@@ -378,16 +399,16 @@ Response (instant):
 
 **Frontend**
 1. Go to Client Portal → "Check Status"
-2. Enter your Client ID: `CLIENT_001`
+2. Enter your Client ID: `CLIENT_0001`
 3. See result with approval/rejection status
 
 **API Call**
 ```bash
-GET http://localhost:8000/api/v1/applications/status/CLIENT_001
+GET http://localhost:8000/api/v1/applications/status/CLIENT_0001
 
 Response:
 {
-  "client_id": "CLIENT_001",
+  "client_id": "CLIENT_0001",
   "status": "approved",
   "rejection_reason": null
 }
@@ -427,40 +448,6 @@ Response:
 
 ---
 
-## 🧪 Testing
-
-```bash
-# Test backend API
-curl http://localhost:8000/api/v1/applications/submit -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"archetype":"vendor","debt_ratio":0.45,...}'
-
-# Test Qdrant connection
-curl http://localhost:6333/health
-
-# Test frontend (open browser)
-open http://localhost:5173
-```
-
-
-
----
-
-## 📚 Key Files Reference
-
-| File | Purpose |
-|------|---------|
-| `backend/main.py` | FastAPI application entry point |
-| `backend/services/embeddings.py` | Vector generation (Sentence Transformers) |
-| `backend/services/qdrant_manager.py` | Qdrant operations (search, create, update) |
-| `backend/api/routers/applications.py` | Credit application endpoints |
-| `frontend/src/pages/ClientPortal.jsx` | Client application & status check UI |
-| `frontend/src/pages/AdminDashboard.jsx` | Admin analysis interface |
-| `frontend/src/pages/Dashboard.jsx` | Overview statistics dashboard |
-| `requirements.txt` | Python dependencies |
-
----
-
 ## 🐛 Troubleshooting
 
 **Qdrant Connection Refused?**
@@ -476,7 +463,7 @@ pip install -r requirements.txt --upgrade
 **API Returns 500 Error?**
 ```bash
 # Check backend logs for detailed error messages
-# Verify .env file has QDRANT_HOST and GOOGLE_API_KEY set
+# Verify .env file has GOOGLE_API_KEY set
 ```
 
 **Frontend Not Loading?**
